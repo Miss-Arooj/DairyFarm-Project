@@ -13,6 +13,29 @@ import {
   Container
 } from 'react-bootstrap';
 
+const handleCompleteOrder = async (e) => {
+  e.preventDefault();
+  if (cart.length === 0) {
+    showAlert('Your cart is empty', 'danger');
+    return;
+  }
+  if (!customerInfo.name || !customerInfo.contact || !customerInfo.address) {
+    showAlert('Please fill all customer information', 'danger');
+    return;
+  }
+
+  try {
+    const orderData = { customerInfo, cart, total: calculateTotal() };
+    await axios.post('http://localhost:5000/api/orders', orderData);
+    
+    setOrderComplete(true);
+    setCart([]);
+    showAlert('Order completed successfully!', 'success');
+  } catch (err) {
+    showAlert('Order failed. Please try again.', 'danger');
+  }
+};
+
 const CustomerOrder = () => {
   const [activeTab, setActiveTab] = useState('products');
   const [cart, setCart] = useState([]);

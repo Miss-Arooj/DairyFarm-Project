@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const EmployeeLogin = () => {
   const [formData, setFormData] = useState({
@@ -16,13 +17,19 @@ const EmployeeLogin = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Employee login data:', formData);
-    // Add your login API call here
-    
-    // Redirect to employee dashboard after login
-    navigate('/employee/dashboard');
+    try {
+      const res = await axios.post('http://localhost:5000/api/auth/employee-login', formData);
+      
+      // Save token to localStorage
+      localStorage.setItem('token', res.data.token);
+      
+      // Redirect to employee dashboard after login
+      navigate('/employee/dashboard');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Login failed');
+    }
   };
 
   return (

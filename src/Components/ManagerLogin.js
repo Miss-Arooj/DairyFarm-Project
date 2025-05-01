@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Alert from 'react-bootstrap/Alert';
+import axios from 'axios';
 
 const ManagerLogin = () => {
   const [formData, setFormData] = useState({
@@ -24,23 +25,31 @@ const ManagerLogin = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Simulate login API call
-    console.log('Manager login data:', formData);
-    
-    // Show success alert
-    setAlert({
-      show: true,
-      message: 'Login successful! Redirecting to dashboard...',
-      variant: 'success'
-    });
+    try {
+      const res = await axios.post('http://localhost:5000/api/auth/login', formData);
+      
+      // Save token to localStorage
+      localStorage.setItem('token', res.data.token);
+      
+      setAlert({
+        show: true,
+        message: 'Login successful! Redirecting to dashboard...',
+        variant: 'success'
+      });
 
-    // Redirect to dashboard after 2 seconds
-    setTimeout(() => {
-      navigate('/manager/dashboard');
-    }, 2000);
+      setTimeout(() => {
+        navigate('/manager/dashboard');
+      }, 2000);
+    } catch (err) {
+      setAlert({
+        show: true,
+        message: err.response?.data?.message || 'Login failed',
+        variant: 'danger'
+      });
+    }
   };
 
   return (

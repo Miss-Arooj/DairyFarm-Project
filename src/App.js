@@ -8,10 +8,21 @@ import EmployeeLogin from './Components/EmployeeLogin';
 import ManagerDashboard from './Components/ManagerDashboard';
 import EmployeeDashboard from './Components/EmployeeDashboard';
 import CustomerOrder from './Components/CustomerOrder'; // Add this import
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 const App = () => {
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    axios.get("http://localhost:5000/")
+      .then(res => setMessage(res.data))
+      .catch(err => console.error(err));
+  }, []);
+
   return (
-    <Routes>
+    <div>
+     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/manager/signup" element={<ManagerSignup />} />
       <Route path="/manager/login" element={<ManagerLogin />} />
@@ -19,7 +30,9 @@ const App = () => {
       <Route path="/manager/dashboard" element={<ManagerDashboard />} />
       <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
       <Route path="/customer/order" element={<CustomerOrder />} /> {/* Add this route */}
-    </Routes>
+     </Routes>
+     <h1>{message}</h1>
+    </div>
   );
 };
 

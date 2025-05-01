@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const ManagerSignup = () => {
   const navigate = useNavigate();
@@ -37,14 +38,16 @@ const ManagerSignup = () => {
     return Object.values(newErrors).every(x => x === '');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (validate()) {
-      console.log('Manager registration data:', formData);
-      // Simulating successful registration
-      alert('Registration Successful! Redirecting to Login...');
-      // Redirect to manager login page
-      navigate('/manager/login');
+      try {
+        const res = await axios.post('http://localhost:5000/api/auth/register', formData);
+        alert('Registration Successful! Redirecting to Login...');
+        navigate('/manager/login');
+      } catch (err) {
+        alert(err.response?.data?.message || 'Registration failed');
+      }
     }
   };
 

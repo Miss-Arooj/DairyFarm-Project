@@ -8,34 +8,10 @@ import {
   Form,
   Row,
   Col,
-  ListGroup,
   InputGroup,
   Container
 } from 'react-bootstrap';
 import axios from 'axios';
-
-const handleCompleteOrder = async (e) => {
-  e.preventDefault();
-  if (cart.length === 0) {
-    showAlert('Your cart is empty', 'danger');
-    return;
-  }
-  if (!customerInfo.name || !customerInfo.contact || !customerInfo.address) {
-    showAlert('Please fill all customer information', 'danger');
-    return;
-  }
-
-  try {
-    const orderData = { customerInfo, cart, total: calculateTotal() };
-    await axios.post('http://localhost:5000/api/orders', orderData);
-    
-    setOrderComplete(true);
-    setCart([]);
-    showAlert('Order completed successfully!', 'success');
-  } catch (err) {
-    showAlert('Order failed. Please try again.', 'danger');
-  }
-};
 
 const CustomerOrder = () => {
   const [activeTab, setActiveTab] = useState('products');
@@ -48,7 +24,6 @@ const CustomerOrder = () => {
   });
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
 
-  // ✅ Updated Products with real prices and units
   const products = [
     { id: 1, name: 'Butter', description: 'Fresh & Natural', price: 70, unit: 'per kg' },
     { id: 2, name: 'Milk', description: 'Fresh & Natural', price: 70, unit: 'per litre' },
@@ -98,7 +73,7 @@ const CustomerOrder = () => {
     setCustomerInfo({ ...customerInfo, [name]: value });
   };
 
-  const handleCompleteOrder = (e) => {
+  const handleCompleteOrder = async (e) => {
     e.preventDefault();
     if (cart.length === 0) {
       showAlert('Your cart is empty', 'danger');
@@ -108,10 +83,17 @@ const CustomerOrder = () => {
       showAlert('Please fill all customer information', 'danger');
       return;
     }
-    console.log('Order completed:', { customerInfo, cart, total: calculateTotal() });
-    setOrderComplete(true);
-    setCart([]);
-    showAlert('Order completed successfully!', 'success');
+
+    try {
+      const orderData = { customerInfo, cart, total: calculateTotal() };
+      await axios.post('http://localhost:5000/api/orders', orderData);
+      
+      setOrderComplete(true);
+      setCart([]);
+      showAlert('Order completed successfully!', 'success');
+    } catch (err) {
+      showAlert('Order failed. Please try again.', 'danger');
+    }
   };
 
   const renderProducts = () => (

@@ -12,6 +12,7 @@ import {
   InputGroup,
   Container
 } from 'react-bootstrap';
+import axios from 'axios';
 
 const handleCompleteOrder = async (e) => {
   e.preventDefault();

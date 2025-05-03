@@ -40,7 +40,47 @@ const getOrders = asyncHandler(async (req, res) => {
   res.json(orders);
 });
 
+// @desc    Get order statistics
+// @route   GET /api/orders/stats
+// @access  Private/Manager
+const getOrderStats = asyncHandler(async (req, res) => {
+    try {
+      const stats = await Order.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalOrders: { $sum: 1 },
+            totalRevenue: { $sum: "$totalAmount" },
+            avgOrderValue: { $avg: "$totalAmount" }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            totalOrders: 1,
+            totalRevenue: 1,
+            avgOrderValue: { $round: ["$avgOrderValue", 2] }
+          }
+        }
+      ]);
+  
+      res.json({
+        success: true,
+        data: stats[0] || {
+          totalOrders: 0,
+          totalRevenue: 0,
+          avgOrderValue: 0
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching order stats:', error);
+      res.status(500);
+      throw new Error('Server error while fetching order statistics');
+    }
+  });
+
 module.exports = {
   createOrder,
-  getOrders
+  getOrders,
+  getOrderStats
 };

@@ -18,21 +18,23 @@ const protect = asyncHandler(async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       // Get user/employee from the token
+      let user;
       if (decoded.role === 'manager') {
-        req.user = await User.findById(decoded.id).select('-password');
+        user = await User.findById(decoded.id).select('-password');
       } else if (decoded.role === 'employee') {
-        req.user = await Employee.findById(decoded.id).select('-password');
+        user = await Employee.findById(decoded.id).select('-password');
       }
 
-      if (!req.user) {
+      if (!user) {
         res.status(401);
         throw new Error('Not authorized');
       }
 
+      req.user = user;
       req.user.role = decoded.role;
       next();
     } catch (error) {
-      console.log(error);
+      console.error('Authentication error:', error);
       res.status(401);
       throw new Error('Not authorized');
     }
@@ -44,13 +46,13 @@ const protect = asyncHandler(async (req, res, next) => {
   }
 });
 
-const managerOnly = asyncHandler(async (req, res, next) => {
+const managerOnly = (req, res, next) => {
   if (req.user && req.user.role === 'manager') {
     next();
   } else {
     res.status(403);
     throw new Error('Not authorized as manager');
   }
-});
+};
 
 module.exports = { protect, managerOnly };

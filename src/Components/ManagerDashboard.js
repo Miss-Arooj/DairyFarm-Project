@@ -12,7 +12,6 @@ import axios from 'axios';
 const ManagerDashboard = () => {
   const [activeSection, setActiveSection] = useState('employees');
 
-  // Employee Management State
   const [activeEmpTab, setActiveEmpTab] = useState('view');
   const [employees, setEmployees] = useState([]);
   const [empSearchTerm, setEmpSearchTerm] = useState('');
@@ -54,7 +53,11 @@ const ManagerDashboard = () => {
         });
         setEmployees(response.data);
       } catch (err) {
-        showAlert('Failed to load employees', 'danger');
+        if (err.response?.status === 404) {
+          setEmployees([]);
+        } else {
+          showAlert(err.response?.data?.message || 'Failed to load employees', 'danger');
+        }
       }
     };
     
@@ -65,15 +68,18 @@ const ManagerDashboard = () => {
 
   const showAlert = (message, variant) => {
     setAlert({ show: true, message, variant });
-    setTimeout(() => setAlert({ ...alert, show: false }), 3000);
+    setTimeout(() => setAlert(prev => ({ ...prev, show: false })), 3000);
   };
 
   const handleAddEmployee = async (e) => {
     e.preventDefault();
+    
+    // Validation
     if (!newEmployee.name || !newEmployee.username || !newEmployee.password) {
       showAlert('Please fill all required fields', 'danger');
       return;
-    }  
+    }
+
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post('/api/employees', newEmployee, {
@@ -83,7 +89,7 @@ const ManagerDashboard = () => {
         }
       });
       
-      setEmployees([...employees, response.data]);
+      setEmployees(prev => [...prev, response.data]);
       setNewEmployee({
         name: '',
         gender: 'Male',
@@ -101,7 +107,8 @@ const ManagerDashboard = () => {
   };
 
   const filteredEmployees = employees.filter(emp =>
-    emp.id?.toString().includes(empSearchTerm)
+    emp._id?.toString().includes(empSearchTerm) ||
+    emp.name?.toLowerCase().includes(empSearchTerm.toLowerCase())
   );
 
   const filteredMilkData = milkData.filter(item =>
@@ -500,7 +507,7 @@ const ManagerDashboard = () => {
         {alert.show && (
           <Alert
             variant={alert.variant}
-            onClose={() => setAlert({ ...alert, show: false })}
+            onClose={() => setAlert(prev => ({ ...prev, show: false }))}
             dismissible
             className="position-fixed top-0 end-0 m-3"
             style={{ zIndex: 9999 }}

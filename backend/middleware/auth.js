@@ -55,13 +55,4 @@ const managerOnly = (req, res, next) => {
   }
 };
 
-const employeeOnly = (req, res, next) => {
-  if (req.user && req.user.role === 'employee') {
-    next();
-  } else {
-    res.status(403);
-    throw new Error('Not authorized as employee');
-  }
-};
-
-module.exports = { protect, managerOnly, employeeOnly };
+module.exports = { protect, managerOnly };

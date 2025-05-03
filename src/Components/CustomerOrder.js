@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Card, Button, Alert, Table, Form,
-  Row, Col, InputGroup, Container
+  Card,
+  Button,
+  Alert,
+  Table,
+  Form,
+  Row,
+  Col,
+  InputGroup,
+  Container
 } from 'react-bootstrap';
 import axios from 'axios';
-import api from '../api';
 
 const CustomerOrder = () => {
   const [activeTab, setActiveTab] = useState('products');
@@ -19,10 +25,10 @@ const CustomerOrder = () => {
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
 
   const products = [
-    { id: 1, name: 'Fresh Milk', description: 'Pasteurized fresh milk', price: 70, unit: 'per liter' },
-    { id: 2, name: 'Butter', description: 'Homemade butter', price: 200, unit: 'per 500g' },
-    { id: 3, name: 'Cheese', description: 'Farm cheese', price: 300, unit: 'per kg' },
-    { id: 4, name: 'Yogurt', description: 'Natural yogurt', price: 100, unit: 'per 500g' }
+    { id: 1, name: 'Butter', description: 'Fresh & Natural', price: 70, unit: 'per kg' },
+    { id: 2, name: 'Milk', description: 'Fresh & Natural', price: 70, unit: 'per litre' },
+    { id: 3, name: 'Cheese', description: 'Fresh & Natural', price: 100, unit: 'per kg' },
+    { id: 4, name: 'Yogurt', description: 'Fresh & Natural', price: 60, unit: 'per kg' }
   ];
 
   const showAlert = (message, variant) => {
@@ -79,24 +85,14 @@ const CustomerOrder = () => {
     }
 
     try {
-      const orderData = { 
-        customerInfo, 
-        cart, 
-        total: calculateTotal() 
-      };
-      
-      await api.post('/api/orders', orderData);
+      const orderData = { customerInfo, cart, total: calculateTotal() };
+      await axios.post('http://localhost:5000/api/orders', orderData);
       
       setOrderComplete(true);
       setCart([]);
-      setCustomerInfo({
-        name: '',
-        contact: '',
-        address: ''
-      });
       showAlert('Order completed successfully!', 'success');
     } catch (err) {
-      showAlert(err.response?.data?.message || 'Order failed. Please try again.', 'danger');
+      showAlert('Order failed. Please try again.', 'danger');
     }
   };
 
@@ -249,10 +245,7 @@ const CustomerOrder = () => {
               <p>Thank you for your order. We will contact you shortly for delivery details.</p>
               <Button
                 variant="outline-success"
-                onClick={() => {
-                  setOrderComplete(false);
-                  setActiveTab('products');
-                }}
+                onClick={() => setOrderComplete(false)}
               >
                 Place Another Order
               </Button>
@@ -280,7 +273,7 @@ const CustomerOrder = () => {
       <Card className="mb-4">
         <Card.Body>
           <div className="d-flex justify-content-between align-items-center">
-            <h1 className="mb-0">Dairy Products</h1>
+            <h1 className="mb-0">PRODUCTS</h1>
             <div>
               <Button
                 variant={activeTab === 'products' ? 'primary' : 'outline-primary'}

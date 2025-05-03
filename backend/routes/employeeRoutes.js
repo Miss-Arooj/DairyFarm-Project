@@ -4,27 +4,14 @@ const { protect, managerOnly } = require('../middleware/auth');
 const {
   addEmployee,
   getEmployees,
-  getEmployee,
-  searchEmployees,
-  updateEmployee,
-  deleteEmployee
+  searchEmployees
 } = require('../controllers/employeeController');
 
-// Protect all employee routes
-router.use(protect);
-router.use(managerOnly);
-
-// Employee routes
 router.route('/')
-  .post(addEmployee)
-  .get(getEmployees);
+  .post(protect, managerOnly, addEmployee)
+  .get(protect, managerOnly, getEmployees);
 
 router.route('/search')
-  .get(searchEmployees);
-
-router.route('/:id')
-  .get(getEmployee)
-  .put(updateEmployee)
-  .delete(deleteEmployee);
+  .get(protect, managerOnly, searchEmployees);
 
 module.exports = router;

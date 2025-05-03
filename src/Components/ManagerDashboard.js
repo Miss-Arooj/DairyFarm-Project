@@ -11,6 +11,7 @@ import axios from 'axios';
 
 const ManagerDashboard = () => {
   const [activeSection, setActiveSection] = useState('employees');
+
   const [activeEmpTab, setActiveEmpTab] = useState('view');
   const [employees, setEmployees] = useState([]);
   const [empSearchTerm, setEmpSearchTerm] = useState('');
@@ -41,12 +42,6 @@ const ManagerDashboard = () => {
   // Alert State
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
 
-  // Add the showAlert function
-  const showAlert = (message, variant) => {
-    setAlert({ show: true, message, variant });
-    setTimeout(() => setAlert(prev => ({ ...prev, show: false })), 3000);
-  };
-
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
@@ -69,7 +64,12 @@ const ManagerDashboard = () => {
     if (activeSection === 'employees') {
       fetchEmployees();
     }
-  }, [activeSection, activeEmpTab]);
+  }, [activeSection]);
+
+  const showAlert = (message, variant) => {
+    setAlert({ show: true, message, variant });
+    setTimeout(() => setAlert(prev => ({ ...prev, show: false })), 3000);
+  };
 
   const handleAddEmployee = async (e) => {
     e.preventDefault();
@@ -107,20 +107,20 @@ const ManagerDashboard = () => {
   };
 
   const filteredEmployees = employees.filter(emp =>
-    emp.employeeId?.toString().includes(empSearchTerm) ||
+    emp._id?.toString().includes(empSearchTerm) ||
     emp.name?.toLowerCase().includes(empSearchTerm.toLowerCase())
   );
 
   const filteredMilkData = milkData.filter(item =>
-    item.animalId?.toLowerCase().includes(milkSearchTerm.toLowerCase())
+    item.A_ID?.toLowerCase().includes(milkSearchTerm.toLowerCase())
   );
 
   const filteredSalesData = salesData.filter(item =>
-    item.salesId?.toLowerCase().includes(salesSearchTerm.toLowerCase())
+    item.Sales_ID?.toLowerCase().includes(salesSearchTerm.toLowerCase())
   );
 
   const filteredFinanceData = financeData.filter(item =>
-    item.date?.toLowerCase().includes(financeSearchTerm.toLowerCase())
+    item.Date?.toLowerCase().includes(financeSearchTerm.toLowerCase())
   );
 
   const renderEmployeesSection = () => (
@@ -148,31 +148,31 @@ const ManagerDashboard = () => {
         <>
           <InputGroup className="mb-3">
             <Form.Control
-              placeholder="Search by name or ID"
+              placeholder="Search by Employee ID"
               value={empSearchTerm}
               onChange={(e) => setEmpSearchTerm(e.target.value)}
             />
-            <Button variant="outline-secondary" onClick={() => setEmpSearchTerm('')}>
-              Clear
+            <Button variant="outline-secondary">
+              Search
             </Button>
           </InputGroup>
 
           <Table striped bordered hover responsive>
             <thead>
               <tr>
-                <th>Employee ID</th>
+                <th>ID</th>
                 <th>Name</th>
                 <th>Gender</th>
                 <th>Contact</th>
-                <th>Salary (Rs)</th>
+                <th>Salary (PKR)</th>
                 <th>Username</th>
               </tr>
             </thead>
             <tbody>
               {filteredEmployees.length > 0 ? (
                 filteredEmployees.map(emp => (
-                  <tr key={emp._id}>
-                    <td>{emp.employeeId}</td>
+                  <tr key={emp.id}>
+                    <td>{emp.id}</td>
                     <td>{emp.name}</td>
                     <td>{emp.gender}</td>
                     <td>{emp.contact}</td>
@@ -183,7 +183,7 @@ const ManagerDashboard = () => {
               ) : (
                 <tr>
                   <td colSpan="6" className="text-center text-muted">
-                    {employees.length === 0 ? 'No employees found' : 'No matching employees found'}
+                    No employees found.
                   </td>
                 </tr>
               )}
@@ -227,7 +227,7 @@ const ManagerDashboard = () => {
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Salary (Rs)</Form.Label>
+            <Form.Label>Salary (PKR)</Form.Label>
             <Form.Control
               type="number"
               placeholder="Enter salary"
@@ -241,33 +241,30 @@ const ManagerDashboard = () => {
             <Form.Label>Username</Form.Label>
             <Form.Control
               type="text"
-              placeholder="Enter username (min 6 characters)"
+              placeholder="Enter username"
               value={newEmployee.username}
               onChange={(e) => setNewEmployee({ ...newEmployee, username: e.target.value })}
-              minLength="6"
               required
             />
           </Form.Group>
 
-          <Form.Group className="mb-4">
+          <Form.Group className="mb-3">
             <Form.Label>Password</Form.Label>
             <Form.Control
               type="password"
-              placeholder="Enter password (min 6 characters)"
+              placeholder="Enter password"
               value={newEmployee.password}
               onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })}
-              minLength="6"
               required
             />
           </Form.Group>
 
           <div className="d-grid gap-2">
-            <Button variant="primary" type="submit" size="lg">
+            <Button variant="primary" type="submit">
               Add Employee
             </Button>
             <Button
               variant="outline-secondary"
-              size="lg"
               onClick={() => setActiveEmpTab('view')}
             >
               Cancel

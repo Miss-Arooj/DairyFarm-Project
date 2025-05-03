@@ -1,4 +1,3 @@
-// utils/generator.js
 const Employee = require('../models/Employee');
 
 const generateEmployeeId = async () => {
@@ -12,12 +11,12 @@ const generateEmployeeId = async () => {
     const lastEmployee = await Employee.findOne().sort({ employeeId: -1 });
     
     let sequenceNumber;
-    if (!lastEmployee || !lastEmployee.employeeId) {
+    if (!lastEmployee) {
       sequenceNumber = 1;
     } else {
       // Extract the sequence number from the last ID
       const lastId = lastEmployee.employeeId;
-      const lastSequence = parseInt(lastId.slice(-4), 10) || 0;
+      const lastSequence = parseInt(lastId.slice(-4), 10);
       sequenceNumber = lastSequence + 1;
     }
     

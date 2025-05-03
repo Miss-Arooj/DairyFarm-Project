@@ -4,44 +4,28 @@ const UserSchema = new mongoose.Schema({
   username: {
     type: String,
     required: true,
-    unique: true,
-    trim: true,
-    minlength: 6
+    unique: true
   },
   fullName: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   password: {
     type: String,
-    required: true,
-    minlength: 6
+    required: true
   },
   contact: {
     type: String,
-    required: true,
-    match: [/^[0-9]{10,15}$/, 'Please enter a valid contact number']
+    required: true
   },
   role: {
     type: String,
-    default: 'manager',
-    enum: ['manager']
+    default: 'manager'
   },
   date: {
     type: Date,
     default: Date.now
   }
-});
-
-// Hash password before saving
-UserSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) {
-    next();
-  }
-
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
 });
 
 module.exports = mongoose.model('User', UserSchema);

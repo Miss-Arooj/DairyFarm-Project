@@ -42,30 +42,11 @@ const ManagerSignup = () => {
     e.preventDefault();
     if (validate()) {
       try {
-        const res = await axios.post('http://localhost:5000/api/auth/register', {
-          username: formData.username,
-          fullName: formData.fullName,
-          password: formData.password,
-          contact: formData.contact
-        }, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (res.data && res.data.token) {
-          localStorage.setItem('token', res.data.token);
-          localStorage.setItem('user', JSON.stringify({
-            username: res.data.username,
-            role: res.data.role
-          }));
-          navigate('/manager/dashboard');
-        }
+        const res = await axios.post('http://localhost:5000/api/auth/register', formData);
+        alert('Registration Successful! Redirecting to Login...');
+        navigate('/manager/login');
       } catch (err) {
-        console.error('Registration error:', err);
-        alert(err.response?.data?.message || 
-             err.message || 
-             'Registration failed. Please try again.');
+        alert(err.response?.data?.message || 'Registration failed');
       }
     }
   };

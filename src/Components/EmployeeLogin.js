@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Form, Button, Alert } from 'react-bootstrap';
 import axios from 'axios';
 
 const EmployeeLogin = () => {
@@ -8,7 +7,6 @@ const EmployeeLogin = () => {
     username: '',
     password: ''
   });
-  const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -23,83 +21,60 @@ const EmployeeLogin = () => {
     e.preventDefault();
     try {
       const response = await axios.post('/api/auth/employee-login', formData);
-      
-      // Save token and user data to localStorage
       localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify({
-        id: response.data._id,
-        role: 'employee',
-        name: response.data.name
-      }));
-      
-      setAlert({
-        show: true,
-        message: 'Login successful! Redirecting...',
-        variant: 'success'
-      });
-      
-      setTimeout(() => {
-        navigate('/employee/dashboard');
-      }, 1500);
+      navigate('/employee/dashboard');
     } catch (err) {
-      setAlert({
-        show: true,
-        message: err.response?.data?.message || 'Invalid credentials',
-        variant: 'danger'
-      });
+      alert(err.response?.data?.message || 'Login failed');
     }
   };
 
   return (
     <div className="auth-container">
       <div className="auth-card">
-        {alert.show && (
-          <Alert 
-            variant={alert.variant}
-            onClose={() => setAlert({...alert, show: false})}
-            dismissible
-            className="mb-4"
-          >
-            {alert.message}
-          </Alert>
-        )}
-        
-        <h2 className="text-center mb-3">Employee Login</h2>
-        <p className="text-center mb-4 text-muted">Enter your credentials to access your dashboard</p>
+        <h2 className="text-center mb-3">Welcome</h2>
+        <p className="text-center mb-4 text-muted">Enter your Employee username and password to login</p>
         
         <div className="d-flex justify-content-center mb-4">
-          <Link to="/" className="btn btn-outline-secondary">Back to Home</Link>
+          <Link to="/" className="btn btn-outline-secondary">Home</Link>
         </div>
 
-        <Form onSubmit={handleSubmit}>
-          <Form.Group className="mb-3">
-            <Form.Label>Username</Form.Label>
-            <Form.Control
+        <div className="text-center mb-4">
+          <img 
+            src="https://cdn-icons-png.flaticon.com/512/3237/3237472.png" 
+            alt="Employee" 
+            className="auth-image"
+          />
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="mb-3">
+            <label htmlFor="username" className="form-label">Username</label>
+            <input
               type="text"
+              className="form-control"
+              id="username"
               name="username"
               value={formData.username}
               onChange={handleChange}
               required
-              placeholder="Enter your username"
             />
-          </Form.Group>
+          </div>
 
-          <Form.Group className="mb-4">
-            <Form.Label>Password</Form.Label>
-            <Form.Control
+          <div className="mb-4">
+            <label htmlFor="password" className="form-label">Password</label>
+            <input
               type="password"
+              className="form-control"
+              id="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
               required
-              placeholder="Enter your password"
             />
-          </Form.Group>
+          </div>
 
-          <Button variant="primary" type="submit" className="w-100 py-2">
-            Login
-          </Button>
-        </Form>
+          <button type="submit" className="btn btn-primary w-100 py-2">Login</button>
+        </form>
       </div>
     </div>
   );

@@ -2,13 +2,12 @@ const express = require('express');
 const router = express.Router();
 const {
   registerManager,
-  loginManager,
-  loginEmployee
+  loginManager
 } = require('../controllers/authController');
 const { loginEmployee } = require('../controllers/employeeAuthController');
 
+router.post('/employee-login', loginEmployee);
 router.post('/register', registerManager);
 router.post('/login', loginManager);
-router.post('/employee-login', loginEmployee);
 
 module.exports = router;

@@ -206,18 +206,7 @@ const ManagerDashboard = () => {
           </Button>
         </div>
       </div>
-
-      <InputGroup className="mb-3">
-        <Form.Control
-          placeholder="Search by Employee ID or Name"
-          value={empSearchTerm}
-          onChange={(e) => setEmpSearchTerm(e.target.value)}
-        />
-        <Button variant="outline-secondary">
-          Search
-        </Button>
-      </InputGroup>
-
+  
       {loading ? (
         <div className="text-center py-4">
           <Spinner animation="border" role="status">
@@ -225,38 +214,51 @@ const ManagerDashboard = () => {
           </Spinner>
         </div>
       ) : (
-        <Table striped bordered hover responsive>
-          <thead>
-            <tr>
-              <th>Employee ID</th>
-              <th>Name</th>
-              <th>Gender</th>
-              <th>Contact</th>
-              <th>Salary (Rs)</th>
-              <th>Username</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredEmployees.length > 0 ? (
-              filteredEmployees.map(emp => (
-                <tr key={emp._id}>
-                  <td>{emp.employeeId}</td>
-                  <td>{emp.name}</td>
-                  <td>{emp.gender}</td>
-                  <td>{emp.contact}</td>
-                  <td>{emp.salary}</td>
-                  <td>{emp.username}</td>
-                </tr>
-              ))
-            ) : (
+        <>
+          <InputGroup className="mb-3">
+            <Form.Control
+              placeholder="Search by Employee ID or Name"
+              value={empSearchTerm}
+              onChange={(e) => setEmpSearchTerm(e.target.value)}
+            />
+            <Button variant="outline-secondary">
+              Search
+            </Button>
+          </InputGroup>
+  
+          <Table striped bordered hover responsive>
+            <thead>
               <tr>
-                <td colSpan="6" className="text-center text-muted">
-                  No employees found.
-                </td>
+                <th>Employee ID</th>
+                <th>Name</th>
+                <th>Gender</th>
+                <th>Contact</th>
+                <th>Salary (Rs)</th>
+                <th>Username</th>
               </tr>
-            )}
-          </tbody>
-        </Table>
+            </thead>
+            <tbody>
+              {employees.length > 0 ? (
+                employees.map(emp => (
+                  <tr key={emp._id}>
+                    <td>{emp.employeeId}</td>
+                    <td>{emp.name}</td>
+                    <td>{emp.gender}</td>
+                    <td>{emp.contact}</td>
+                    <td>{emp.salary}</td>
+                    <td>{emp.username}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" className="text-center text-muted">
+                    No employees found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </Table>
+        </>
       )}
     </Card>
   );

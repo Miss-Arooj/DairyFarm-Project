@@ -1,8 +1,9 @@
+// backend/utils/generator.js
 const Employee = require('../models/Employee');
 
 const generateEmployeeId = async () => {
   try {
-    // Get the current year and month
+    // Get current year and month
     const date = new Date();
     const year = date.getFullYear().toString().slice(-2);
     const month = (date.getMonth() + 1).toString().padStart(2, '0');

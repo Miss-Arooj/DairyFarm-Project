@@ -6,7 +6,10 @@ const Employee = require('../models/Employee');
 const protect = asyncHandler(async (req, res, next) => {
   let token;
 
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
     try {
       // Get token from header
       token = req.headers.authorization.split(' ')[1];
@@ -14,7 +17,7 @@ const protect = asyncHandler(async (req, res, next) => {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Get user from token
+      // Get user/employee from the token
       let user;
       if (decoded.role === 'manager') {
         user = await User.findById(decoded.id).select('-password');
@@ -52,4 +55,13 @@ const managerOnly = (req, res, next) => {
   }
 };
 
-module.exports = { protect, managerOnly };
+const employeeOnly = (req, res, next) => {
+  if (req.user && req.user.role === 'employee') {
+    next();
+  } else {
+    res.status(403);
+    throw new Error('Not authorized as employee');
+  }
+};
+
+module.exports = { protect, managerOnly, employeeOnly };

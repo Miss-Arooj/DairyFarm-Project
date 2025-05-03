@@ -4,28 +4,23 @@ const { protect, managerOnly } = require('../middleware/auth');
 const {
   addEmployee,
   getEmployees,
-  searchEmployees,
   getEmployee,
+  searchEmployees,
   updateEmployee,
   deleteEmployee
 } = require('../controllers/employeeController');
 
-// POST /api/employees - Add new employee
-router.post('/', protect, managerOnly, addEmployee);
+// Define routes with proper handlers
+router.route('/')
+  .post(protect, managerOnly, addEmployee)
+  .get(protect, managerOnly, getEmployees);
 
-// GET /api/employees - Get all employees
-router.get('/', protect, managerOnly, getEmployees);
+router.route('/search')
+  .get(protect, managerOnly, searchEmployees);
 
-// GET /api/employees/search - Search employees
-router.get('/search', protect, managerOnly, searchEmployees);
-
-// GET /api/employees/:id - Get single employee
-router.get('/:id', protect, managerOnly, getEmployee);
-
-// PUT /api/employees/:id - Update employee
-router.put('/:id', protect, managerOnly, updateEmployee);
-
-// DELETE /api/employees/:id - Delete employee
-router.delete('/:id', protect, managerOnly, deleteEmployee);
+router.route('/:id')
+  .get(protect, managerOnly, getEmployee)
+  .put(protect, managerOnly, updateEmployee)
+  .delete(protect, managerOnly, deleteEmployee);
 
 module.exports = router;

@@ -1,27 +1,32 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 
 const UserSchema = new mongoose.Schema({
   username: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    trim: true,
+    minlength: 6
   },
   fullName: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   password: {
     type: String,
-    required: true
+    required: true,
+    minlength: 6
   },
   contact: {
     type: String,
-    required: true
+    required: true,
+    match: [/^[0-9]{10,15}$/, 'Please enter a valid contact number']
   },
   role: {
     type: String,
-    default: 'manager'
+    default: 'manager',
+    enum: ['manager']
   },
   date: {
     type: Date,
@@ -38,10 +43,5 @@ UserSchema.pre('save', async function(next) {
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
-
-// Match user entered password to hashed password
-UserSchema.methods.matchPassword = async function(enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
-};
 
 module.exports = mongoose.model('User', UserSchema);

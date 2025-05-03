@@ -1,6 +1,5 @@
-// src/Components/AddEmployee.js
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Button,
@@ -9,7 +8,6 @@ import {
   Spinner
 } from 'react-bootstrap';
 import axios from 'axios';
-import api from '../api';
 
 const AddEmployee = () => {
   const [formData, setFormData] = useState({
@@ -22,7 +20,6 @@ const AddEmployee = () => {
   });
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
-  const [errors, setErrors] = useState({});
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -31,40 +28,18 @@ const AddEmployee = () => {
       ...formData,
       [name]: value
     });
-    
-    // Clear error when user types
-    if (errors[name]) {
-      setErrors({
-        ...errors,
-        [name]: null
-      });
-    }
-  };
-
-  const validate = () => {
-    const newErrors = {};
-    
-    if (!formData.name) newErrors.name = 'Name is required';
-    if (!formData.contact) newErrors.contact = 'Contact is required';
-    if (!formData.salary || isNaN(formData.salary)) newErrors.salary = 'Valid salary is required';
-    if (!formData.username || formData.username.length < 6) newErrors.username = 'Username must be at least 6 characters';
-    if (!formData.password || formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validate()) return;
-    
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
       
-      const response = await api.post('/api/employees', formData, {
+      const response = await axios.post('http://localhost:5000/api/employees', formData, {
         headers: {
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         }
       });
@@ -113,12 +88,8 @@ const AddEmployee = () => {
               name="name"
               value={formData.name}
               onChange={handleChange}
-              isInvalid={!!errors.name}
               required
             />
-            <Form.Control.Feedback type="invalid">
-              {errors.name}
-            </Form.Control.Feedback>
           </Form.Group>
 
           <Form.Group className="mb-3">
@@ -141,12 +112,8 @@ const AddEmployee = () => {
               name="contact"
               value={formData.contact}
               onChange={handleChange}
-              isInvalid={!!errors.contact}
               required
             />
-            <Form.Control.Feedback type="invalid">
-              {errors.contact}
-            </Form.Control.Feedback>
           </Form.Group>
 
           <Form.Group className="mb-3">
@@ -156,12 +123,8 @@ const AddEmployee = () => {
               name="salary"
               value={formData.salary}
               onChange={handleChange}
-              isInvalid={!!errors.salary}
               required
             />
-            <Form.Control.Feedback type="invalid">
-              {errors.salary}
-            </Form.Control.Feedback>
           </Form.Group>
 
           <Form.Group className="mb-3">
@@ -171,12 +134,8 @@ const AddEmployee = () => {
               name="username"
               value={formData.username}
               onChange={handleChange}
-              isInvalid={!!errors.username}
               required
             />
-            <Form.Control.Feedback type="invalid">
-              {errors.username}
-            </Form.Control.Feedback>
           </Form.Group>
 
           <Form.Group className="mb-3">
@@ -186,12 +145,8 @@ const AddEmployee = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              isInvalid={!!errors.password}
               required
             />
-            <Form.Control.Feedback type="invalid">
-              {errors.password}
-            </Form.Control.Feedback>
           </Form.Group>
 
           <div className="d-grid gap-2">

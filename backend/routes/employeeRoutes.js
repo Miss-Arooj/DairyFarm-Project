@@ -1,4 +1,3 @@
-// backend/routes/employeeRoutes.js
 const express = require('express');
 const router = express.Router();
 const { protect, managerOnly } = require('../middleware/auth');
@@ -14,7 +13,7 @@ const {
 // POST /api/employees - Add new employee
 router.post('/', protect, managerOnly, addEmployee);
 
-// GET /api/employees - Get all employees for current manager
+// GET /api/employees - Get all employees
 router.get('/', protect, managerOnly, getEmployees);
 
 // GET /api/employees/search - Search employees

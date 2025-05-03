@@ -1,5 +1,6 @@
 const Employee = require('../models/Employee');
 const asyncHandler = require('express-async-handler');
+const bcrypt = require('bcryptjs');
 
 // @desc    Add new employee
 // @route   POST /api/employees
@@ -14,6 +15,9 @@ const addEmployee = asyncHandler(async (req, res) => {
     throw new Error('Employee already exists');
   }
 
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
   const employee = await Employee.create({
     employeeId,
     name,
@@ -21,7 +25,7 @@ const addEmployee = asyncHandler(async (req, res) => {
     contact,
     salary,
     username,
-    password,
+    password: hashedPassword,
     role: 'employee'
   });
 

@@ -5,7 +5,9 @@ const {
   loginManager,
   loginEmployee
 } = require('../controllers/authController');
+const { loginEmployee } = require('../controllers/employeeAuthController');
 
+router.post('/employee-login', loginEmployee);
 router.post('/register', registerManager);
 router.post('/login', loginManager);
 router.post('/employee-login', loginEmployee);

@@ -7,6 +7,7 @@ import Table from 'react-bootstrap/Table';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Card from 'react-bootstrap/Card';
 import InputGroup from 'react-bootstrap/InputGroup';
+import axios from 'axios';
 
 const ManagerDashboard = () => {
   const [activeSection, setActiveSection] = useState('employees');
@@ -42,25 +43,55 @@ const ManagerDashboard = () => {
   // Alert State
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
 
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get('/api/employees', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        setEmployees(response.data);
+      } catch (err) {
+        showAlert('Failed to load employees', 'danger');
+      }
+    };
+    
+    if (activeSection === 'employees') {
+      fetchEmployees();
+    }
+  }, [activeSection]);
+  
   const showAlert = (message, variant) => {
     setAlert({ show: true, message, variant });
     setTimeout(() => setAlert({ ...alert, show: false }), 3000);
   };
 
-  const handleAddEmployee = (e) => {
+  const handleAddEmployee = async (e) => {
     e.preventDefault();
-    const newId = employees.length > 0 ? Math.max(...employees.map(e => e.id)) + 1 : 1;
-    setEmployees([...employees, { ...newEmployee, id: newId }]);
-    setNewEmployee({
-      name: '',
-      gender: 'Male',
-      contact: '',
-      salary: '',
-      username: '',
-      password: ''
-    });
-    showAlert('Employee added successfully!', 'success');
-    setActiveEmpTab('view');
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post('/api/employees', newEmployee, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      setEmployees([...employees, response.data]);
+      setNewEmployee({
+        name: '',
+        gender: 'Male',
+        contact: '',
+        salary: '',
+        username: '',
+        password: ''
+      });
+      showAlert('Employee added successfully!', 'success');
+      setActiveEmpTab('view');
+    } catch (err) {
+      showAlert(err.response?.data?.message || 'Failed to add employee', 'danger');
+    }
   };
 
   const filteredEmployees = employees.filter(emp =>

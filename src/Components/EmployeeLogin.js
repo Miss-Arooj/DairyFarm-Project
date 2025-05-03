@@ -20,12 +20,8 @@ const EmployeeLogin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/employee-login', formData);
-      
-      // Save token to localStorage
-      localStorage.setItem('token', res.data.token);
-      
-      // Redirect to employee dashboard after login
+      const response = await axios.post('/api/auth/employee-login', formData);
+      localStorage.setItem('token', response.data.token);
       navigate('/employee/dashboard');
     } catch (err) {
       alert(err.response?.data?.message || 'Login failed');

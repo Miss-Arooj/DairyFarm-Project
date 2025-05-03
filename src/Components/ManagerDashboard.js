@@ -1,18 +1,55 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import Alert from 'react-bootstrap/Alert';
-import Button from 'react-bootstrap/Button';
-import Form from 'react-bootstrap/Form';
-import Table from 'react-bootstrap/Table';
-import ListGroup from 'react-bootstrap/ListGroup';
-import Card from 'react-bootstrap/Card';
-import InputGroup from 'react-bootstrap/InputGroup';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  Alert,
+  Button,
+  Card,
+  Form,
+  Table,
+  ListGroup,
+  InputGroup,
+  Spinner,
+  Tab,
+  Tabs,
+  Row,
+  Col
+} from 'react-bootstrap';
 import axios from 'axios';
+import api from '../api';
+import { Bar, Line, Pie } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  PointElement,
+  LineElement,
+  ArcElement
+} from 'chart.js';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  PointElement,
+  LineElement,
+  ArcElement
+);
 
 const ManagerDashboard = () => {
   const [activeSection, setActiveSection] = useState('employees');
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
+  const navigate = useNavigate();
 
-  const [activeEmpTab, setActiveEmpTab] = useState('view');
+  // Employees state
   const [employees, setEmployees] = useState([]);
   const [empSearchTerm, setEmpSearchTerm] = useState('');
   const [newEmployee, setNewEmployee] = useState({
@@ -24,46 +61,81 @@ const ManagerDashboard = () => {
     password: ''
   });
 
-  // Milk Production State
-  const [activeMilkTab, setActiveMilkTab] = useState('daily');
+  // Milk Production state
   const [milkData, setMilkData] = useState([]);
-  const [milkSearchTerm, setMilkSearchTerm] = useState('');
+  const [milkStats, setMilkStats] = useState([]);
 
-  // Sales State
-  const [activeSalesTab, setActiveSalesTab] = useState('records');
+  // Sales state
   const [salesData, setSalesData] = useState([]);
-  const [salesSearchTerm, setSalesSearchTerm] = useState('');
+  const [salesStats, setSalesStats] = useState([]);
 
-  // Finance State
-  const [activeFinanceTab, setActiveFinanceTab] = useState('expense');
+  // Finance state
   const [financeData, setFinanceData] = useState([]);
-  const [financeSearchTerm, setFinanceSearchTerm] = useState('');
-
-  // Alert State
-  const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
+  const [financeStats, setFinanceStats] = useState([]);
+  const [newFinanceRecord, setNewFinanceRecord] = useState({
+    date: '',
+    totalRevenue: '',
+    totalExpense: ''
+  });
 
   useEffect(() => {
-    const fetchEmployees = async () => {
+    const fetchDashboardStats = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get('/api/employees', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        setEmployees(response.data);
+        setLoading(true);
+        const response = await api.get('/api/dashboard/stats');
+        setDashboardStats(response.data);
       } catch (err) {
-        if (err.response?.status === 404) {
-          setEmployees([]);
-        } else {
-          showAlert(err.response?.data?.message || 'Failed to load employees', 'danger');
-        }
+        showAlert(err.response?.data?.message || 'Failed to load dashboard stats', 'danger');
+      } finally {
+        setLoading(false);
       }
     };
-    
-    if (activeSection === 'employees') {
-      fetchEmployees();
-    }
+
+    fetchDashboardStats();
+  }, [activeSection]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        switch (activeSection) {
+          case 'employees':
+            const empResponse = await api.get('/api/employees');
+            setEmployees(empResponse.data);
+            break;
+          case 'milk':
+            const milkResponse = await api.get('/api/milk');
+            setMilkData(milkResponse.data);
+            
+            const milkStatsResponse = await api.get('/api/milk/stats');
+            setMilkStats(milkStatsResponse.data);
+            break;
+          case 'sales':
+            const salesResponse = await api.get('/api/orders');
+            setSalesData(salesResponse.data);
+            
+            const salesStatsResponse = await api.get('/api/orders/stats');
+            setSalesStats(salesStatsResponse.data);
+            break;
+          case 'finance':
+            const financeResponse = await api.get('/api/finance');
+            setFinanceData(financeResponse.data);
+            
+            const financeStatsResponse = await api.get('/api/finance/stats');
+            setFinanceStats(financeStatsResponse.data);
+            break;
+          default:
+            break;
+        }
+      } catch (err) {
+        showAlert(err.response?.data?.message || 'Failed to load data', 'danger');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [activeSection]);
 
   const showAlert = (message, variant) => {
@@ -74,20 +146,9 @@ const ManagerDashboard = () => {
   const handleAddEmployee = async (e) => {
     e.preventDefault();
     
-    // Validation
-    if (!newEmployee.name || !newEmployee.username || !newEmployee.password) {
-      showAlert('Please fill all required fields', 'danger');
-      return;
-    }
-
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.post('/api/employees', newEmployee, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      setLoading(true);
+      const response = await api.post('/api/employees', newEmployee);
       
       setEmployees(prev => [...prev, response.data]);
       setNewEmployee({
@@ -99,28 +160,37 @@ const ManagerDashboard = () => {
         password: ''
       });
       showAlert('Employee added successfully!', 'success');
-      setActiveEmpTab('view');
     } catch (err) {
       showAlert(err.response?.data?.message || 'Failed to add employee', 'danger');
-      console.error('Error adding employee:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddFinanceRecord = async (e) => {
+    e.preventDefault();
+    
+    try {
+      setLoading(true);
+      const response = await api.post('/api/finance', newFinanceRecord);
+      
+      setFinanceData(prev => [...prev, response.data]);
+      setNewFinanceRecord({
+        date: '',
+        totalRevenue: '',
+        totalExpense: ''
+      });
+      showAlert('Finance record added successfully!', 'success');
+    } catch (err) {
+      showAlert(err.response?.data?.message || 'Failed to add finance record', 'danger');
+    } finally {
+      setLoading(false);
     }
   };
 
   const filteredEmployees = employees.filter(emp =>
-    emp._id?.toString().includes(empSearchTerm) ||
+    emp.employeeId?.toString().includes(empSearchTerm) ||
     emp.name?.toLowerCase().includes(empSearchTerm.toLowerCase())
-  );
-
-  const filteredMilkData = milkData.filter(item =>
-    item.A_ID?.toLowerCase().includes(milkSearchTerm.toLowerCase())
-  );
-
-  const filteredSalesData = salesData.filter(item =>
-    item.Sales_ID?.toLowerCase().includes(salesSearchTerm.toLowerCase())
-  );
-
-  const filteredFinanceData = financeData.filter(item =>
-    item.Date?.toLowerCase().includes(financeSearchTerm.toLowerCase())
   );
 
   const renderEmployeesSection = () => (
@@ -129,26 +199,75 @@ const ManagerDashboard = () => {
         <h2>Employee Management</h2>
         <div>
           <Button
-            variant={activeEmpTab === 'view' ? 'primary' : 'outline-primary'}
-            className="me-2"
-            onClick={() => setActiveEmpTab('view')}
-          >
-            View Employees
-          </Button>
-          <Button
-            variant={activeEmpTab === 'add' ? 'primary' : 'outline-primary'}
-            onClick={() => setActiveEmpTab('add')}
+            variant="primary"
+            onClick={() => navigate('/manager/dashboard/employees/add')}
           >
             Add Employee
           </Button>
         </div>
       </div>
 
-      {activeEmpTab === 'view' ? (
-        <>
+      <InputGroup className="mb-3">
+        <Form.Control
+          placeholder="Search by Employee ID or Name"
+          value={empSearchTerm}
+          onChange={(e) => setEmpSearchTerm(e.target.value)}
+        />
+        <Button variant="outline-secondary">
+          Search
+        </Button>
+      </InputGroup>
+
+      {loading ? (
+        <div className="text-center py-4">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </Spinner>
+        </div>
+      ) : (
+        <Table striped bordered hover responsive>
+          <thead>
+            <tr>
+              <th>Employee ID</th>
+              <th>Name</th>
+              <th>Gender</th>
+              <th>Contact</th>
+              <th>Salary (Rs)</th>
+              <th>Username</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredEmployees.length > 0 ? (
+              filteredEmployees.map(emp => (
+                <tr key={emp._id}>
+                  <td>{emp.employeeId}</td>
+                  <td>{emp.name}</td>
+                  <td>{emp.gender}</td>
+                  <td>{emp.contact}</td>
+                  <td>{emp.salary}</td>
+                  <td>{emp.username}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" className="text-center text-muted">
+                  No employees found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </Table>
+      )}
+    </Card>
+  );
+
+  const renderMilkProductionSection = () => (
+    <Card className="p-4 mb-4">
+      <Tabs defaultActiveKey="daily" className="mb-3">
+        <Tab eventKey="daily" title="Daily Production">
           <InputGroup className="mb-3">
             <Form.Control
-              placeholder="Search by Employee ID"
+              placeholder="Search by Animal ID"
               value={empSearchTerm}
               onChange={(e) => setEmpSearchTerm(e.target.value)}
             />
@@ -157,302 +276,408 @@ const ManagerDashboard = () => {
             </Button>
           </InputGroup>
 
-          <Table striped bordered hover responsive>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Gender</th>
-                <th>Contact</th>
-                <th>Salary (PKR)</th>
-                <th>Username</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredEmployees.length > 0 ? (
-                filteredEmployees.map(emp => (
-                  <tr key={emp.id}>
-                    <td>{emp.id}</td>
-                    <td>{emp.name}</td>
-                    <td>{emp.gender}</td>
-                    <td>{emp.contact}</td>
-                    <td>{emp.salary}</td>
-                    <td>{emp.username}</td>
-                  </tr>
-                ))
-              ) : (
+          {loading ? (
+            <div className="text-center py-4">
+              <Spinner animation="border" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+            </div>
+          ) : (
+            <Table striped bordered hover responsive>
+              <thead>
                 <tr>
-                  <td colSpan="6" className="text-center text-muted">
-                    No employees found.
-                  </td>
+                  <th>Date</th>
+                  <th>Animal ID</th>
+                  <th>Quantity (Liters)</th>
+                  <th>Quality</th>
                 </tr>
-              )}
-            </tbody>
-          </Table>
-        </>
-      ) : (
-        <Form onSubmit={handleAddEmployee}>
-          <Form.Group className="mb-3">
-            <Form.Label>Full Name</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="Enter full name"
-              value={newEmployee.name}
-              onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
-              required
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-3">
-            <Form.Label>Gender</Form.Label>
-            <Form.Select
-              value={newEmployee.gender}
-              onChange={(e) => setNewEmployee({ ...newEmployee, gender: e.target.value })}
-            >
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-            </Form.Select>
-          </Form.Group>
-
-          <Form.Group className="mb-3">
-            <Form.Label>Contact Number</Form.Label>
-            <Form.Control
-              type="tel"
-              placeholder="Enter contact number"
-              value={newEmployee.contact}
-              onChange={(e) => setNewEmployee({ ...newEmployee, contact: e.target.value })}
-              required
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-3">
-            <Form.Label>Salary (PKR)</Form.Label>
-            <Form.Control
-              type="number"
-              placeholder="Enter salary"
-              value={newEmployee.salary}
-              onChange={(e) => setNewEmployee({ ...newEmployee, salary: e.target.value })}
-              required
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-3">
-            <Form.Label>Username</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="Enter username"
-              value={newEmployee.username}
-              onChange={(e) => setNewEmployee({ ...newEmployee, username: e.target.value })}
-              required
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-3">
-            <Form.Label>Password</Form.Label>
-            <Form.Control
-              type="password"
-              placeholder="Enter password"
-              value={newEmployee.password}
-              onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })}
-              required
-            />
-          </Form.Group>
-
-          <div className="d-grid gap-2">
-            <Button variant="primary" type="submit">
-              Add Employee
-            </Button>
-            <Button
-              variant="outline-secondary"
-              onClick={() => setActiveEmpTab('view')}
-            >
-              Cancel
-            </Button>
-          </div>
-        </Form>
-      )}
-    </Card>
-  );
-
-  const renderMilkProductionSection = () => (
-    <Card className="p-4 mb-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Milk Production</h2>
-        <div>
-          <Button
-            variant={activeMilkTab === 'daily' ? 'primary' : 'outline-primary'}
-            className="me-2"
-            onClick={() => setActiveMilkTab('daily')}
-          >
-            Daily Production
-          </Button>
-          <Button
-            variant={activeMilkTab === 'stats' ? 'primary' : 'outline-primary'}
-            onClick={() => setActiveMilkTab('stats')}
-          >
-            Production Stats
-          </Button>
-        </div>
-      </div>
-
-      {activeMilkTab === 'daily' ? (
-        <>
-          <InputGroup className="mb-3">
-            <Form.Control
-              placeholder="Search by Animal ID"
-              value={milkSearchTerm}
-              onChange={(e) => setMilkSearchTerm(e.target.value)}
-            />
-            <Button variant="outline-secondary">
-              Search
-            </Button>
-          </InputGroup>
-
-          <Table striped bordered hover responsive>
-            <thead>
-              <tr>
-                <th>Production Date</th>
-                <th>Animal ID</th>
-                <th>Quantity (KG)</th>
-                <th>Quality</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colSpan="4" className="text-center text-muted">
-                  No milk production records found (backend will load data here)
-                </td>
-              </tr>
-            </tbody>
-          </Table>
-        </>
-      ) : (
-        <div className="alert alert-info text-center py-4">
-          Milk production statistics will be implemented in the next phase.
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {milkData.length > 0 ? (
+                  milkData.map(record => (
+                    <tr key={record._id}>
+                      <td>{new Date(record.productionDate).toLocaleDateString()}</td>
+                      <td>{record.animalId}</td>
+                      <td>{record.quantity}</td>
+                      <td>{record.quality}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="4" className="text-center text-muted">
+                      No milk production records found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
+          )}
+        </Tab>
+        <Tab eventKey="stats" title="Production Stats">
+          {loading ? (
+            <div className="text-center py-4">
+              <Spinner animation="border" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+            </div>
+          ) : (
+            <div className="mt-4">
+              <h4 className="mb-3">Last 30 Days Milk Production</h4>
+              <Bar
+                data={{
+                  labels: milkStats.map(stat => stat._id),
+                  datasets: [
+                    {
+                      label: 'Milk Production (Liters)',
+                      data: milkStats.map(stat => stat.totalQuantity),
+                      backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                      borderColor: 'rgba(54, 162, 235, 1)',
+                      borderWidth: 1
+                    }
+                  ]
+                }}
+                options={{
+                  responsive: true,
+                  plugins: {
+                    legend: {
+                      position: 'top'
+                    },
+                    title: {
+                      display: true,
+                      text: 'Daily Milk Production'
+                    }
+                  }
+                }}
+              />
+            </div>
+          )}
+        </Tab>
+      </Tabs>
     </Card>
   );
 
   const renderSalesSection = () => (
     <Card className="p-4 mb-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Sales Management</h2>
-        <div>
-          <Button
-            variant={activeSalesTab === 'records' ? 'primary' : 'outline-primary'}
-            className="me-2"
-            onClick={() => setActiveSalesTab('records')}
-          >
-            Sales Records
-          </Button>
-          <Button
-            variant={activeSalesTab === 'stats' ? 'primary' : 'outline-primary'}
-            onClick={() => setActiveSalesTab('stats')}
-          >
-            Sales Statistics
-          </Button>
-        </div>
-      </div>
-
-      {activeSalesTab === 'records' ? (
-        <>
+      <Tabs defaultActiveKey="records" className="mb-3">
+        <Tab eventKey="records" title="Sales Records">
           <InputGroup className="mb-3">
             <Form.Control
-              placeholder="Search by Sales ID"
-              value={salesSearchTerm}
-              onChange={(e) => setSalesSearchTerm(e.target.value)}
+              placeholder="Search by Order Date"
+              value={empSearchTerm}
+              onChange={(e) => setEmpSearchTerm(e.target.value)}
             />
             <Button variant="outline-secondary">
               Search
             </Button>
           </InputGroup>
 
-          <Table striped bordered hover responsive>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Sales ID</th>
-                <th>Customer Name</th>
-                <th>Product ID</th>
-                <th>Amount (PKR)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colSpan="5" className="text-center text-muted">
-                  No sales records found (backend will load data here)
-                </td>
-              </tr>
-            </tbody>
-          </Table>
-        </>
-      ) : (
-        <div className="alert alert-info text-center py-4">
-          Sales statistics will be implemented in the next phase.
-        </div>
-      )}
+          {loading ? (
+            <div className="text-center py-4">
+              <Spinner animation="border" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+            </div>
+          ) : (
+            <Table striped bordered hover responsive>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Items</th>
+                  <th>Total (Rs)</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {salesData.length > 0 ? (
+                  salesData.map(order => (
+                    <tr key={order._id}>
+                      <td>{new Date(order.date).toLocaleDateString()}</td>
+                      <td>{order.customerInfo.name}</td>
+                      <td>
+                        <ul className="list-unstyled mb-0">
+                          {order.items.map((item, idx) => (
+                            <li key={idx}>{item.name} (x{item.quantity})</li>
+                          ))}
+                        </ul>
+                      </td>
+                      <td>{order.total}</td>
+                      <td>
+                        <span className={`badge ${order.status === 'completed' ? 'bg-success' : 'bg-warning'}`}>
+                          {order.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="text-center text-muted">
+                      No sales records found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
+          )}
+        </Tab>
+        <Tab eventKey="stats" title="Sales Statistics">
+          {loading ? (
+            <div className="text-center py-4">
+              <Spinner animation="border" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+            </div>
+          ) : (
+            <div className="mt-4">
+              <Row>
+                <Col md={6}>
+                  <h4 className="mb-3">Last 30 Days Sales</h4>
+                  <Line
+                    data={{
+                      labels: salesStats.map(stat => stat._id),
+                      datasets: [
+                        {
+                          label: 'Daily Revenue (Rs)',
+                          data: salesStats.map(stat => stat.totalRevenue),
+                          backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                          borderColor: 'rgba(75, 192, 192, 1)',
+                          borderWidth: 1
+                        }
+                      ]
+                    }}
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: {
+                          position: 'top'
+                        },
+                        title: {
+                          display: true,
+                          text: 'Daily Sales Revenue'
+                        }
+                      }
+                    }}
+                  />
+                </Col>
+                <Col md={6}>
+                  <h4 className="mb-3">Sales Distribution</h4>
+                  <Pie
+                    data={{
+                      labels: ['Milk', 'Butter', 'Cheese', 'Yogurt', 'Others'],
+                      datasets: [
+                        {
+                          label: 'Sales by Product',
+                          data: [45, 25, 15, 10, 5],
+                          backgroundColor: [
+                            'rgba(255, 99, 132, 0.5)',
+                            'rgba(54, 162, 235, 0.5)',
+                            'rgba(255, 206, 86, 0.5)',
+                            'rgba(75, 192, 192, 0.5)',
+                            'rgba(153, 102, 255, 0.5)'
+                          ],
+                          borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)'
+                          ],
+                          borderWidth: 1
+                        }
+                      ]
+                    }}
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: {
+                          position: 'top'
+                        },
+                        title: {
+                          display: true,
+                          text: 'Sales by Product Category'
+                        }
+                      }
+                    }}
+                  />
+                </Col>
+              </Row>
+            </div>
+          )}
+        </Tab>
+      </Tabs>
     </Card>
   );
 
   const renderFinanceSection = () => (
     <Card className="p-4 mb-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Finance Records</h2>
-        <div>
-          <Button
-            variant={activeFinanceTab === 'expense' ? 'primary' : 'outline-primary'}
-            className="me-2"
-            onClick={() => setActiveFinanceTab('expense')}
-          >
-            Expense/Revenue
-          </Button>
-          <Button
-            variant={activeFinanceTab === 'stats' ? 'primary' : 'outline-primary'}
-            onClick={() => setActiveFinanceTab('stats')}
-          >
-            Income Stats
-          </Button>
-        </div>
-      </div>
-
-      {activeFinanceTab === 'expense' ? (
-        <>
-          <InputGroup className="mb-3">
-            <Form.Control
-              placeholder="Search by Date"
-              value={financeSearchTerm}
-              onChange={(e) => setFinanceSearchTerm(e.target.value)}
-            />
-            <Button variant="outline-secondary">
-              Search
+      <Tabs defaultActiveKey="expense" className="mb-3">
+        <Tab eventKey="expense" title="Expense/Revenue">
+          <Form onSubmit={handleAddFinanceRecord} className="mb-4">
+            <Row>
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label>Date</Form.Label>
+                  <Form.Control
+                    type="date"
+                    value={newFinanceRecord.date}
+                    onChange={(e) => setNewFinanceRecord({ ...newFinanceRecord, date: e.target.value })}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label>Revenue (Rs)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    value={newFinanceRecord.totalRevenue}
+                    onChange={(e) => setNewFinanceRecord({ ...newFinanceRecord, totalRevenue: e.target.value })}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label>Expense (Rs)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    value={newFinanceRecord.totalExpense}
+                    onChange={(e) => setNewFinanceRecord({ ...newFinanceRecord, totalExpense: e.target.value })}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            <Button type="submit" variant="primary" className="mt-3" disabled={loading}>
+              {loading ? 'Adding...' : 'Add Record'}
             </Button>
-          </InputGroup>
+          </Form>
 
-          <Table striped bordered hover responsive>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Revenue (PKR)</th>
-                <th>Expense (PKR)</th>
-                <th>Profit (PKR)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colSpan="4" className="text-center text-muted">
-                  No finance records found (backend will load data here)
-                </td>
-              </tr>
-            </tbody>
-          </Table>
-        </>
-      ) : (
-        <div className="alert alert-info text-center py-4">
-          Income statistics will be implemented in the next phase.
-        </div>
-      )}
+          {loading ? (
+            <div className="text-center py-4">
+              <Spinner animation="border" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+            </div>
+          ) : (
+            <Table striped bordered hover responsive>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Revenue (Rs)</th>
+                  <th>Expense (Rs)</th>
+                  <th>Profit (Rs)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {financeData.length > 0 ? (
+                  financeData.map(record => (
+                    <tr key={record._id}>
+                      <td>{new Date(record.date).toLocaleDateString()}</td>
+                      <td>{record.totalRevenue}</td>
+                      <td>{record.totalExpense}</td>
+                      <td>{record.totalRevenue - record.totalExpense}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="4" className="text-center text-muted">
+                      No finance records found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
+          )}
+        </Tab>
+        <Tab eventKey="stats" title="Income Stats">
+          {loading ? (
+            <div className="text-center py-4">
+              <Spinner animation="border" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+            </div>
+          ) : (
+            <div className="mt-4">
+              <Row>
+                <Col md={6}>
+                  <h4 className="mb-3">Monthly Revenue vs Expense</h4>
+                  <Bar
+                    data={{
+                      labels: financeStats.map(stat => stat._id),
+                      datasets: [
+                        {
+                          label: 'Revenue',
+                          data: financeStats.map(stat => stat.totalRevenue),
+                          backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                          borderColor: 'rgba(75, 192, 192, 1)',
+                          borderWidth: 1
+                        },
+                        {
+                          label: 'Expense',
+                          data: financeStats.map(stat => stat.totalExpense),
+                          backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                          borderColor: 'rgba(255, 99, 132, 1)',
+                          borderWidth: 1
+                        }
+                      ]
+                    }}
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: {
+                          position: 'top'
+                        },
+                        title: {
+                          display: true,
+                          text: 'Monthly Financials'
+                        }
+                      }
+                    }}
+                  />
+                </Col>
+                <Col md={6}>
+                  <h4 className="mb-3">Profit Distribution</h4>
+                  <Pie
+                    data={{
+                      labels: ['Milk Sales', 'Dairy Products', 'Other Income'],
+                      datasets: [
+                        {
+                          label: 'Income Sources',
+                          data: [60, 30, 10],
+                          backgroundColor: [
+                            'rgba(54, 162, 235, 0.5)',
+                            'rgba(255, 206, 86, 0.5)',
+                            'rgba(153, 102, 255, 0.5)'
+                          ],
+                          borderColor: [
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(153, 102, 255, 1)'
+                          ],
+                          borderWidth: 1
+                        }
+                      ]
+                    }}
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: {
+                          position: 'top'
+                        },
+                        title: {
+                          display: true,
+                          text: 'Income Sources'
+                        }
+                      }
+                    }}
+                  />
+                </Col>
+              </Row>
+            </div>
+          )}
+        </Tab>
+      </Tabs>
     </Card>
   );
 
@@ -473,36 +698,79 @@ const ManagerDashboard = () => {
 
   return (
     <div className="d-flex" style={{ minHeight: '100vh' }}>
+      {/* Navigation Sidebar */}
       <div className="bg-dark text-white p-3" style={{ width: '250px' }}>
         <h4 className="text-center mb-4">Dairy Farm Manager</h4>
         <hr className="bg-light" />
+        
+        <div className="mb-4">
+          <Card className="bg-secondary text-white">
+            <Card.Body className="p-2">
+              <h6 className="mb-1">Quick Stats</h6>
+              {dashboardStats ? (
+                <>
+                  <p className="mb-1 small">Employees: {dashboardStats.totalEmployees}</p>
+                  <p className="mb-1 small">Animals: {dashboardStats.totalAnimals}</p>
+                  <p className="mb-1 small">Today's Milk: {dashboardStats.todayMilkProduction}L</p>
+                  <p className="mb-0 small">Monthly Revenue: Rs.{dashboardStats.monthlyRevenue}</p>
+                </>
+              ) : (
+                <Spinner animation="border" size="sm" />
+              )}
+            </Card.Body>
+          </Card>
+        </div>
+        
         <ListGroup variant="flush" className="mb-4">
-          <ListGroup.Item action active={activeSection === 'employees'}
+          <ListGroup.Item 
+            action 
+            active={activeSection === 'employees'}
             className={activeSection === 'employees' ? 'bg-primary border-0' : 'bg-dark text-white border-0'}
-            onClick={() => setActiveSection('employees')}>
+            onClick={() => setActiveSection('employees')}
+          >
             Manage Employees
           </ListGroup.Item>
-          <ListGroup.Item action active={activeSection === 'milk'}
+          <ListGroup.Item 
+            action 
+            active={activeSection === 'milk'}
             className={activeSection === 'milk' ? 'bg-primary border-0' : 'bg-dark text-white border-0'}
-            onClick={() => setActiveSection('milk')}>
+            onClick={() => setActiveSection('milk')}
+          >
             Milk Production
           </ListGroup.Item>
-          <ListGroup.Item action active={activeSection === 'sales'}
+          <ListGroup.Item 
+            action 
+            active={activeSection === 'sales'}
             className={activeSection === 'sales' ? 'bg-primary border-0' : 'bg-dark text-white border-0'}
-            onClick={() => setActiveSection('sales')}>
+            onClick={() => setActiveSection('sales')}
+          >
             Sales
           </ListGroup.Item>
-          <ListGroup.Item action active={activeSection === 'finance'}
+          <ListGroup.Item 
+            action 
+            active={activeSection === 'finance'}
             className={activeSection === 'finance' ? 'bg-primary border-0' : 'bg-dark text-white border-0'}
-            onClick={() => setActiveSection('finance')}>
+            onClick={() => setActiveSection('finance')}
+          >
             Finance Records
           </ListGroup.Item>
         </ListGroup>
+        
         <div className="mt-auto">
-          <Link to="/" className="btn btn-outline-light w-100">Logout</Link>
+          <Button 
+            variant="outline-light" 
+            className="w-100"
+            onClick={() => {
+              localStorage.removeItem('token');
+              navigate('/');
+            }}
+          >
+            Logout
+          </Button>
         </div>
       </div>
 
+      {/* Main Content */}
       <div className="flex-grow-1 p-4">
         {alert.show && (
           <Alert
@@ -515,6 +783,7 @@ const ManagerDashboard = () => {
             {alert.message}
           </Alert>
         )}
+        
         {renderActiveSection()}
       </div>
     </div>

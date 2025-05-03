@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Card,
   Button,
@@ -9,7 +9,8 @@ import {
   Row,
   Col,
   InputGroup,
-  Container
+  Container,
+  Spinner
 } from 'react-bootstrap';
 import axios from 'axios';
 
@@ -23,13 +24,29 @@ const CustomerOrder = () => {
     address: ''
   });
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
+  const [loading, setLoading] = useState(false);
+  const [products, setProducts] = useState([]);
+  const navigate = useNavigate();
 
-  const products = [
-    { id: 1, name: 'Butter', description: 'Fresh & Natural', price: 70, unit: 'per kg' },
-    { id: 2, name: 'Milk', description: 'Fresh & Natural', price: 70, unit: 'per litre' },
-    { id: 3, name: 'Cheese', description: 'Fresh & Natural', price: 100, unit: 'per kg' },
-    { id: 4, name: 'Yogurt', description: 'Fresh & Natural', price: 60, unit: 'per kg' }
-  ];
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        // In a real app, you would fetch products from the backend
+        setProducts([
+          { id: 'prod1', name: 'Fresh Milk', description: 'Pure farm fresh milk', price: 70, unit: 'per liter' },
+          { id: 'prod2', name: 'Butter', description: 'Homemade butter', price: 250, unit: 'per kg' },
+          { id: 'prod3', name: 'Cheese', description: 'Farmhouse cheese', price: 400, unit: 'per kg' },
+          { id: 'prod4', name: 'Yogurt', description: 'Natural yogurt', price: 100, unit: 'per kg' },
+          { id: 'prod5', name: 'Paneer', description: 'Fresh cottage cheese', price: 300, unit: 'per kg' },
+          { id: 'prod6', name: 'Ghee', description: 'Pure clarified butter', price: 800, unit: 'per kg' }
+        ]);
+      } catch (err) {
+        showAlert('Failed to load products', 'danger');
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   const showAlert = (message, variant) => {
     setAlert({ show: true, message, variant });
@@ -59,7 +76,7 @@ const CustomerOrder = () => {
     if (newQuantity < 1) return;
     setCart(cart.map(item =>
       item.id === productId
-        ? { ...item, quantity: newQuantity }
+        ? { ...item, quantity: parseInt(newQuantity) }
         : item
     ));
   };
@@ -85,14 +102,32 @@ const CustomerOrder = () => {
     }
 
     try {
-      const orderData = { customerInfo, cart, total: calculateTotal() };
+      setLoading(true);
+      const orderData = { 
+        customerInfo, 
+        cart: cart.map(item => ({
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price
+        })), 
+        total: calculateTotal() 
+      };
+      
       await axios.post('http://localhost:5000/api/orders', orderData);
       
       setOrderComplete(true);
       setCart([]);
+      setCustomerInfo({
+        name: '',
+        contact: '',
+        address: ''
+      });
       showAlert('Order completed successfully!', 'success');
     } catch (err) {
-      showAlert('Order failed. Please try again.', 'danger');
+      showAlert(err.response?.data?.message || 'Order failed. Please try again.', 'danger');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -151,6 +186,7 @@ const CustomerOrder = () => {
                       <Button
                         variant="outline-secondary"
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        disabled={item.quantity <= 1}
                       >
                         -
                       </Button>
@@ -209,7 +245,7 @@ const CustomerOrder = () => {
                   <Form.Group className="mb-3">
                     <Form.Label>Contact Number</Form.Label>
                     <Form.Control
-                      type="text"
+                      type="tel"
                       name="contact"
                       value={customerInfo.contact}
                       onChange={handleCustomerInfoChange}
@@ -230,8 +266,21 @@ const CustomerOrder = () => {
                   </Form.Group>
 
                   <div className="d-grid">
-                    <Button variant="success" type="submit" size="lg">
-                      Complete Order
+                    <Button variant="success" type="submit" size="lg" disabled={loading}>
+                      {loading ? (
+                        <>
+                          <Spinner
+                            as="span"
+                            animation="border"
+                            size="sm"
+                            role="status"
+                            aria-hidden="true"
+                          />
+                          <span className="ms-2">Processing...</span>
+                        </>
+                      ) : (
+                        'Complete Order'
+                      )}
                     </Button>
                   </div>
                 </Form>
@@ -245,7 +294,10 @@ const CustomerOrder = () => {
               <p>Thank you for your order. We will contact you shortly for delivery details.</p>
               <Button
                 variant="outline-success"
-                onClick={() => setOrderComplete(false)}
+                onClick={() => {
+                  setOrderComplete(false);
+                  setActiveTab('products');
+                }}
               >
                 Place Another Order
               </Button>
@@ -279,12 +331,14 @@ const CustomerOrder = () => {
                 variant={activeTab === 'products' ? 'primary' : 'outline-primary'}
                 className="me-2"
                 onClick={() => setActiveTab('products')}
+                disabled={orderComplete}
               >
                 View Products
               </Button>
               <Button
                 variant={activeTab === 'cart' ? 'primary' : 'outline-primary'}
                 onClick={() => setActiveTab('cart')}
+                disabled={orderComplete}
               >
                 View Cart ({cart.length})
               </Button>

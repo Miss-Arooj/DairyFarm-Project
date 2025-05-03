@@ -7,31 +7,22 @@ import ManagerLogin from './Components/ManagerLogin';
 import EmployeeLogin from './Components/EmployeeLogin';
 import ManagerDashboard from './Components/ManagerDashboard';
 import EmployeeDashboard from './Components/EmployeeDashboard';
-import CustomerOrder from './Components/CustomerOrder'; // Add this import
-import { useEffect, useState } from "react";
-import axios from "axios";
+import CustomerOrder from './Components/CustomerOrder';
+import AddEmployee from './Components/AddEmployee'; // You'll need to create this component
 
 const App = () => {
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    axios.get("http://localhost:5000/")
-      .then(res => setMessage(res.data))
-      .catch(err => console.error(err));
-  }, []);
-
   return (
     <div>
-     <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/manager/signup" element={<ManagerSignup />} />
-      <Route path="/manager/login" element={<ManagerLogin />} />
-      <Route path="/employee/login" element={<EmployeeLogin />} />
-      <Route path="/manager/dashboard" element={<ManagerDashboard />} />
-      <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
-      <Route path="/customer/order" element={<CustomerOrder />} /> {/* Add this route */}
-     </Routes>
-     <h1>{message}</h1>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/manager/signup" element={<ManagerSignup />} />
+        <Route path="/manager/login" element={<ManagerLogin />} />
+        <Route path="/employee/login" element={<EmployeeLogin />} />
+        <Route path="/manager/dashboard" element={<ManagerDashboard />} />
+        <Route path="/manager/dashboard/employees/add" element={<AddEmployee />} />
+        <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
+        <Route path="/customer/order" element={<CustomerOrder />} />
+      </Routes>
     </div>
   );
 };
@@ -43,7 +34,7 @@ const HomePage = () => {
       <div className="overlay"></div>
       
       <div className="content-container">
-        <h1 className="display-3 fw-bold mb-5 text-uppercase">EXPLORE THE UNKNOWN</h1>
+        <h1 className="display-3 fw-bold mb-5 text-uppercase">DAIRY FARM MANAGEMENT</h1>
         
         <div className="quote-box bg-light bg-opacity-25 p-4 rounded mb-5 backdrop-blur">
           <p className="fs-3 fst-italic mb-0">

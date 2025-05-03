@@ -10,17 +10,21 @@ const {
   deleteEmployee
 } = require('../controllers/employeeController');
 
-// Define routes with proper handlers
+// Protect all employee routes
+router.use(protect);
+router.use(managerOnly);
+
+// Employee routes
 router.route('/')
-  .post(protect, managerOnly, addEmployee)
-  .get(protect, managerOnly, getEmployees);
+  .post(addEmployee)
+  .get(getEmployees);
 
 router.route('/search')
-  .get(protect, managerOnly, searchEmployees);
+  .get(searchEmployees);
 
 router.route('/:id')
-  .get(protect, managerOnly, getEmployee)
-  .put(protect, managerOnly, updateEmployee)
-  .delete(protect, managerOnly, deleteEmployee);
+  .get(getEmployee)
+  .put(updateEmployee)
+  .delete(deleteEmployee);
 
 module.exports = router;

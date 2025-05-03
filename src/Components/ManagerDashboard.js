@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Alert from 'react-bootstrap/Alert';
 import Button from 'react-bootstrap/Button';
@@ -62,7 +62,7 @@ const ManagerDashboard = () => {
       fetchEmployees();
     }
   }, [activeSection]);
-  
+
   const showAlert = (message, variant) => {
     setAlert({ show: true, message, variant });
     setTimeout(() => setAlert({ ...alert, show: false }), 3000);

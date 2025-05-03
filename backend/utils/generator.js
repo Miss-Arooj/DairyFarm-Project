@@ -1,3 +1,4 @@
+// utils/generator.js
 const Employee = require('../models/Employee');
 
 const generateEmployeeId = async () => {

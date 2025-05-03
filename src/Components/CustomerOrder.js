@@ -1,8 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, Button, Alert, Table, Form, Row, Col, InputGroup, Container } from 'react-bootstrap';
+import {
+  Card,
+  Button,
+  Alert,
+  Table,
+  Form,
+  Row,
+  Col,
+  InputGroup,
+  Container
+} from 'react-bootstrap';
 import axios from 'axios';
-import api from '../api';
 
 const CustomerOrder = () => {
   const [activeTab, setActiveTab] = useState('products');
@@ -14,23 +23,13 @@ const CustomerOrder = () => {
     address: ''
   });
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await api.get('/api/products');
-        setProducts(response.data);
-        setLoading(false);
-      } catch (err) {
-        showAlert('Failed to load products', 'danger');
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, []);
+  const products = [
+    { id: 1, name: 'Butter', description: 'Fresh & Natural', price: 70, unit: 'per kg' },
+    { id: 2, name: 'Milk', description: 'Fresh & Natural', price: 70, unit: 'per litre' },
+    { id: 3, name: 'Cheese', description: 'Fresh & Natural', price: 100, unit: 'per kg' },
+    { id: 4, name: 'Yogurt', description: 'Fresh & Natural', price: 60, unit: 'per kg' }
+  ];
 
   const showAlert = (message, variant) => {
     setAlert({ show: true, message, variant });
@@ -38,20 +37,15 @@ const CustomerOrder = () => {
   };
 
   const addToCart = (product) => {
-    const existingItem = cart.find(item => item.id === product._id);
+    const existingItem = cart.find(item => item.id === product.id);
     if (existingItem) {
       setCart(cart.map(item =>
-        item.id === product._id
+        item.id === product.id
           ? { ...item, quantity: item.quantity + 1 }
           : item
       ));
     } else {
-      setCart([...cart, { 
-        id: product._id, 
-        name: product.name, 
-        price: product.price, 
-        quantity: 1 
-      }]);
+      setCart([...cart, { ...product, quantity: 1 }]);
     }
     showAlert(`${product.name} added to cart`, 'success');
   };
@@ -91,19 +85,14 @@ const CustomerOrder = () => {
     }
 
     try {
-      const orderData = { 
-        customerInfo, 
-        cart, 
-        total: calculateTotal() 
-      };
-      
-      await api.post('/api/orders', orderData);
+      const orderData = { customerInfo, cart, total: calculateTotal() };
+      await axios.post('http://localhost:5000/api/orders', orderData);
       
       setOrderComplete(true);
       setCart([]);
       showAlert('Order completed successfully!', 'success');
     } catch (err) {
-      showAlert(err.response?.data?.message || 'Order failed. Please try again.', 'danger');
+      showAlert('Order failed. Please try again.', 'danger');
     }
   };
 

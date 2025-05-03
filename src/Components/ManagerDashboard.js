@@ -8,12 +8,10 @@ import ListGroup from 'react-bootstrap/ListGroup';
 import Card from 'react-bootstrap/Card';
 import InputGroup from 'react-bootstrap/InputGroup';
 import axios from 'axios';
-import api from '../api';
 
 const ManagerDashboard = () => {
   const [activeSection, setActiveSection] = useState('employees');
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(false);
+
   const [activeEmpTab, setActiveEmpTab] = useState('view');
   const [employees, setEmployees] = useState([]);
   const [empSearchTerm, setEmpSearchTerm] = useState('');
@@ -43,23 +41,6 @@ const ManagerDashboard = () => {
 
   // Alert State
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
-
-  // Fetch dashboard stats when component mounts
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get('/api/dashboard/stats');
-        setStats(response.data);
-        setLoading(false);
-      } catch (err) {
-        console.error('Failed to load dashboard stats:', err);
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, []);
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -142,51 +123,6 @@ const ManagerDashboard = () => {
     item.Date?.toLowerCase().includes(financeSearchTerm.toLowerCase())
   );
 
-  const renderDashboardOverview = () => (
-    <div className="row">
-      <div className="col-md-3 mb-4">
-        <Card className="text-center">
-          <Card.Body>
-            <Card.Title>Total Animals</Card.Title>
-            <Card.Text className="display-4">
-              {loading ? '...' : stats?.totalAnimals || 0}
-            </Card.Text>
-          </Card.Body>
-        </Card>
-      </div>
-      <div className="col-md-3 mb-4">
-        <Card className="text-center">
-          <Card.Body>
-            <Card.Title>Total Employees</Card.Title>
-            <Card.Text className="display-4">
-              {loading ? '...' : stats?.totalEmployees || 0}
-            </Card.Text>
-          </Card.Body>
-        </Card>
-      </div>
-      <div className="col-md-3 mb-4">
-        <Card className="text-center">
-          <Card.Body>
-            <Card.Title>Today's Milk (L)</Card.Title>
-            <Card.Text className="display-4">
-              {loading ? '...' : stats?.todayMilkProduction || 0}
-            </Card.Text>
-          </Card.Body>
-        </Card>
-      </div>
-      <div className="col-md-3 mb-4">
-        <Card className="text-center">
-          <Card.Body>
-            <Card.Title>Monthly Revenue</Card.Title>
-            <Card.Text className="display-4">
-              {loading ? '...' : stats?.monthlyRevenue ? `$${stats.monthlyRevenue}` : '$0'}
-            </Card.Text>
-          </Card.Body>
-        </Card>
-      </div>
-    </div>
-  );
-  
   const renderEmployeesSection = () => (
     <Card className="p-4 mb-4">
       <div className="d-flex justify-content-between align-items-center mb-4">

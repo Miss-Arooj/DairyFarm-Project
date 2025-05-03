@@ -1,12 +1,19 @@
 const Employee = require('../models/Employee');
 const asyncHandler = require('express-async-handler');
 const { generateEmployeeId } = require('../utils/generator');
+const bcrypt = require('bcryptjs');
 
 // @desc    Add new employee
 // @route   POST /api/employees
 // @access  Private/Manager
 const addEmployee = asyncHandler(async (req, res) => {
   const { name, gender, contact, salary, username, password } = req.body;
+
+  // Validate required fields
+  if (!name || !gender || !contact || !salary || !username || !password) {
+    res.status(400);
+    throw new Error('Please fill all fields');
+  }
 
   // Check if employee already exists
   const employeeExists = await Employee.findOne({ 
@@ -23,47 +30,222 @@ const addEmployee = asyncHandler(async (req, res) => {
       : 'Contact number already registered');
   }
 
-  // Generate employee ID
-  const employeeId = await generateEmployeeId();
+  // Validate password length
+  if (password.length < 6) {
+    res.status(400);
+    throw new Error('Password must be at least 6 characters');
+  }
 
-  // Create employee
-  const employee = await Employee.create({
-    employeeId,
-    name,
-    gender,
-    contact,
-    salary,
-    username,
-    password,
-    manager: req.user.id
-  });
+  // Validate salary is a number
+  if (isNaN(salary)) {
+    res.status(400);
+    throw new Error('Salary must be a number');
+  }
 
-  // Return employee data without password
-  const employeeData = employee.toObject();
-  delete employeeData.password;
+  try {
+    // Generate unique employee ID
+    const employeeId = await generateEmployeeId();
 
-  res.status(201).json({
-    success: true,
-    data: employeeData
-  });
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create employee
+    const employee = await Employee.create({
+      employeeId,
+      name,
+      gender,
+      contact,
+      salary: Number(salary),
+      username,
+      password: hashedPassword,
+      manager: req.user.id
+    });
+
+    // Return employee data without password
+    const employeeData = employee.toObject();
+    delete employeeData.password;
+
+    res.status(201).json({
+      success: true,
+      data: employeeData
+    });
+  } catch (error) {
+    console.error('Error creating employee:', error);
+    res.status(500);
+    throw new Error('Server error while creating employee');
+  }
 });
 
 // @desc    Get all employees for current manager
 // @route   GET /api/employees
 // @access  Private/Manager
 const getEmployees = asyncHandler(async (req, res) => {
-  const employees = await Employee.find({ manager: req.user.id })
-    .select('-password')
-    .sort({ createdAt: -1 });
+  try {
+    const employees = await Employee.find({ manager: req.user.id })
+      .select('-password')
+      .sort({ createdAt: -1 });
 
-  res.json({
-    success: true,
-    count: employees.length,
-    data: employees
-  });
+    res.status(200).json({
+      success: true,
+      count: employees.length,
+      data: employees
+    });
+  } catch (error) {
+    console.error('Error fetching employees:', error);
+    res.status(500);
+    throw new Error('Server error while fetching employees');
+  }
+});
+
+// @desc    Search employees
+// @route   GET /api/employees/search
+// @access  Private/Manager
+const searchEmployees = asyncHandler(async (req, res) => {
+  const { term } = req.query;
+
+  if (!term || term.trim() === '') {
+    return res.status(400).json({
+      success: false,
+      message: 'Please provide a search term'
+    });
+  }
+
+  try {
+    const employees = await Employee.find({
+      manager: req.user.id,
+      $or: [
+        { employeeId: { $regex: term, $options: 'i' } },
+        { name: { $regex: term, $options: 'i' } },
+        { contact: { $regex: term, $options: 'i' } }
+      ]
+    }).select('-password');
+
+    res.status(200).json({
+      success: true,
+      count: employees.length,
+      data: employees
+    });
+  } catch (error) {
+    console.error('Error searching employees:', error);
+    res.status(500);
+    throw new Error('Server error while searching employees');
+  }
+});
+
+// @desc    Get single employee
+// @route   GET /api/employees/:id
+// @access  Private/Manager
+const getEmployee = asyncHandler(async (req, res) => {
+  try {
+    const employee = await Employee.findOne({
+      _id: req.params.id,
+      manager: req.user.id
+    }).select('-password');
+
+    if (!employee) {
+      res.status(404);
+      throw new Error('Employee not found');
+    }
+
+    res.status(200).json({
+      success: true,
+      data: employee
+    });
+  } catch (error) {
+    console.error('Error fetching employee:', error);
+    res.status(500);
+    throw new Error('Server error while fetching employee');
+  }
+});
+
+// @desc    Update employee
+// @route   PUT /api/employees/:id
+// @access  Private/Manager
+const updateEmployee = asyncHandler(async (req, res) => {
+  try {
+    const employee = await Employee.findOne({
+      _id: req.params.id,
+      manager: req.user.id
+    });
+
+    if (!employee) {
+      res.status(404);
+      throw new Error('Employee not found');
+    }
+
+    const { name, gender, contact, salary, username } = req.body;
+
+    // Update fields if provided
+    if (name) employee.name = name;
+    if (gender) employee.gender = gender;
+    if (contact) employee.contact = contact;
+    if (salary) employee.salary = salary;
+    if (username) {
+      const usernameExists = await Employee.findOne({ username });
+      if (usernameExists && usernameExists._id.toString() !== req.params.id) {
+        res.status(400);
+        throw new Error('Username already in use');
+      }
+      employee.username = username;
+    }
+
+    const updatedEmployee = await employee.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        employeeId: updatedEmployee.employeeId,
+        _id: updatedEmployee._id,
+        name: updatedEmployee.name,
+        gender: updatedEmployee.gender,
+        contact: updatedEmployee.contact,
+        salary: updatedEmployee.salary,
+        username: updatedEmployee.username,
+        role: updatedEmployee.role
+      }
+    });
+  } catch (error) {
+    console.error('Error updating employee:', error);
+    res.status(500);
+    throw new Error('Server error while updating employee');
+  }
+});
+
+// @desc    Delete employee
+// @route   DELETE /api/employees/:id
+// @access  Private/Manager
+const deleteEmployee = asyncHandler(async (req, res) => {
+  try {
+    const employee = await Employee.findOneAndDelete({
+      _id: req.params.id,
+      manager: req.user.id
+    });
+
+    if (!employee) {
+      res.status(404);
+      throw new Error('Employee not found');
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        message: 'Employee deleted successfully',
+        employeeId: employee.employeeId
+      }
+    });
+  } catch (error) {
+    console.error('Error deleting employee:', error);
+    res.status(500);
+    throw new Error('Server error while deleting employee');
+  }
 });
 
 module.exports = {
   addEmployee,
-  getEmployees
+  getEmployees,
+  getEmployee,
+  searchEmployees,
+  updateEmployee,
+  deleteEmployee
 };

@@ -6,33 +6,30 @@ const bcrypt = require('bcryptjs');
 // @route   POST /api/employees
 // @access  Private/Manager
 const addEmployee = asyncHandler(async (req, res) => {
-  const { employeeId, name, gender, contact, salary, username, password } = req.body;
-
-  // Check if employee already exists
-  const employeeExists = await Employee.findOne({ employeeId });
-  if (employeeExists) {
-    res.status(400);
-    throw new Error('Employee already exists');
-  }
-
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-
-  const employee = await Employee.create({
-    employeeId,
-    name,
-    gender,
-    contact,
-    salary,
-    username,
-    password: hashedPassword,
-    role: 'employee'
-  });
-
-  if (employee) {
+    const { name, gender, contact, salary, username, password } = req.body;
+  
+    // Check if employee already exists
+    const employeeExists = await Employee.findOne({ username });
+    if (employeeExists) {
+      res.status(400);
+      throw new Error('Employee already exists with this username');
+    }
+  
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+  
+    const employee = await Employee.create({
+      name,
+      gender,
+      contact,
+      salary,
+      username,
+      password: hashedPassword,
+      role: 'employee'
+    });
+  
     res.status(201).json({
       _id: employee._id,
-      employeeId: employee.employeeId,
       name: employee.name,
       gender: employee.gender,
       contact: employee.contact,
@@ -40,11 +37,13 @@ const addEmployee = asyncHandler(async (req, res) => {
       username: employee.username,
       role: employee.role
     });
-  } else {
-    res.status(400);
-    throw new Error('Invalid employee data');
-  }
-});
+
+    if (!name || !gender || !contact || !salary || !username || !password) {
+        res.status(400);
+        throw new Error('Please fill all fields');
+      }
+      
+  });
 
 // @desc    Get all employees
 // @route   GET /api/employees

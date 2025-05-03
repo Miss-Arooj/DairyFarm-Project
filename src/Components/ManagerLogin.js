@@ -54,20 +54,18 @@ const ManagerLogin = () => {
 
   return (
     <div className="auth-container">
-      {/* Alert notification */}
-      {alert.show && (
-        <Alert 
-          variant={alert.variant}
-          onClose={() => setAlert({...alert, show: false})}
-          dismissible
-          className="position-absolute top-0 start-50 translate-middle-x mt-3"
-          style={{ width: '90%', maxWidth: '500px' }}
-        >
-          {alert.message}
-        </Alert>
-      )}
-
+      {/* Alert notification - moved inside auth-card and changed positioning */}
       <div className="auth-card">
+        {alert.show && (
+          <Alert 
+            variant={alert.variant}
+            onClose={() => setAlert({...alert, show: false})}
+            dismissible
+            className="mb-4" // Added margin bottom
+          >
+            {alert.message}
+          </Alert>
+        )}
         <h2 className="text-center mb-3">Welcome</h2>
         <p className="text-center mb-4 text-muted">Enter your Manager username and password to login</p>
         

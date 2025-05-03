@@ -70,11 +70,16 @@ const ManagerDashboard = () => {
 
   const handleAddEmployee = async (e) => {
     e.preventDefault();
+    if (!newEmployee.name || !newEmployee.username || !newEmployee.password) {
+      showAlert('Please fill all required fields', 'danger');
+      return;
+    }  
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post('/api/employees', newEmployee, {
         headers: {
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
       
@@ -91,6 +96,7 @@ const ManagerDashboard = () => {
       setActiveEmpTab('view');
     } catch (err) {
       showAlert(err.response?.data?.message || 'Failed to add employee', 'danger');
+      console.error('Error adding employee:', err);
     }
   };
 

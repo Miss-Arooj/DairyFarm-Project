@@ -164,8 +164,32 @@ const EmployeeDashboard = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      const token = localStorage.getItem('employeeToken');
       
+      // Validate required fields
+      if (!newMilkRecord.Production_Date || !newMilkRecord.A_ID || !newMilkRecord.Quantity) {
+        throw new Error('Please fill all required fields');
+      }
+  
+      // Validate quantity is a positive number
+      if (isNaN(newMilkRecord.Quantity)) {
+        throw new Error('Quantity must be a number');
+      }
+      if (parseFloat(newMilkRecord.Quantity) <= 0) {
+        throw new Error('Quantity must be greater than 0');
+      }
+  
+      const token = localStorage.getItem('employeeToken');
+      if (!token) {
+        throw new Error('Authentication token missing');
+      }
+  
+      console.log('Sending request with data:', { // Add this for debugging
+        productionDate: newMilkRecord.Production_Date,
+        animalId: newMilkRecord.A_ID,
+        quantity: parseFloat(newMilkRecord.Quantity),
+        quality: newMilkRecord.Quality
+      });
+  
       const response = await axios.post('/api/milk', {
         productionDate: newMilkRecord.Production_Date,
         animalId: newMilkRecord.A_ID,
@@ -176,8 +200,19 @@ const EmployeeDashboard = () => {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
+      }).catch(error => {
+        console.error('Full error details:', error);
+        console.error('Request config:', error.config);
+        throw error;
       });
-      
+  
+      console.log('Response:', response); // Add this for debugging
+  
+      if (response.status !== 201) {
+        throw new Error('Failed to add milk record');
+      }
+  
+      // Reset form and show success
       setNewMilkRecord({
         Production_Date: '',
         A_ID: '',
@@ -189,7 +224,19 @@ const EmployeeDashboard = () => {
       setActiveMilkTab('view');
       fetchMilkRecords();
     } catch (err) {
-      showAlert(err.response?.data?.message || 'Failed to add milk record', 'danger');
+      console.error('Full error:', err); // Log full error
+      console.error('Error response:', err.response); // Log response if exists
+      
+      let errorMessage = 'Failed to add milk record';
+      if (err.response) {
+        errorMessage = err.response.data?.message || 
+                      err.response.data?.error || 
+                      err.response.statusText;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      showAlert(errorMessage, 'danger');
     } finally {
       setLoading(false);
     }

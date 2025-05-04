@@ -5,31 +5,54 @@ const asyncHandler = require('express-async-handler');
 // @route   POST /api/milk
 // @access  Private/Employee
 const addMilkRecord = asyncHandler(async (req, res) => {
+    console.log('Received POST to /api/milk with body:', req.body);
     const { productionDate, animalId, quantity, quality } = req.body;
   
-    // Validation
-    if (!productionDate || !animalId || !quantity) {
-      return res.status(400).json({ message: 'Please provide all required fields' });
+    // Basic validation
+    if (!productionDate || !animalId || quantity === undefined) {
+      return res.status(400).json({ 
+        message: 'Please provide all required fields' 
+      });
     }
   
-    if (isNaN(quantity) || parseFloat(quantity) <= 0) {
-      return res.status(400).json({ message: 'Please provide a valid quantity' });
+    if (isNaN(quantity)) {
+      return res.status(400).json({ 
+        message: 'Quantity must be a number' 
+      });
     }
   
-    if (new Date(productionDate) > new Date()) {
-      return res.status(400).json({ message: 'Production date cannot be in the future' });
+    if (parseFloat(quantity) <= 0) {
+      return res.status(400).json({ 
+        message: 'Quantity must be greater than 0' 
+      });
     }
   
-    const milkRecord = await MilkProduction.create({
-      productionDate,
-      animalId: animalId.toUpperCase().trim(),
-      quantity: parseFloat(quantity).toFixed(2),
-      quality,
-      recordedBy: req.user._id
-    });
+    try {
+      // Convert productionDate to Date object
+      const productionDateObj = new Date(productionDate);
+      if (isNaN(productionDateObj.getTime())) {
+        return res.status(400).json({
+          message: 'Invalid production date format'
+        });
+      }
+
+      const milkRecord = await MilkProduction.create({
+        productionDate: productionDateObj,
+        animalId: animalId.toUpperCase(), // Ensure uppercase as per schema
+        quantity: parseFloat(quantity),
+        quality: quality || 'Good',
+        recordedBy: req.user._id
+      });
   
-    res.status(201).json(milkRecord);
-  });
+      res.status(201).json(milkRecord);
+    } catch (error) {
+      console.error('Error creating milk record:', error); // Add logging
+      res.status(500).json({ 
+        message: 'Server error creating milk record',
+        error: error.message 
+      });
+    }
+});
 
 // @desc    Get milk production records
 // @route   GET /api/milk

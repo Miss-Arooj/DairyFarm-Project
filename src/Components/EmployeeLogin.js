@@ -4,6 +4,7 @@ import Alert from 'react-bootstrap/Alert';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 
 const EmployeeLogin = () => {
   const [formData, setFormData] = useState({
@@ -37,15 +38,12 @@ const EmployeeLogin = () => {
       const response = await axios.post('http://localhost:5000/api/auth/employee-login', formData);
       
       if (response.data && response.data.token) {
-        // Store token and employee data
         localStorage.setItem('employeeToken', response.data.token);
         localStorage.setItem('employeeData', JSON.stringify({
           id: response.data._id,
           name: response.data.name,
           role: response.data.role
         }));
-        
-        // Redirect to dashboard
         navigate('/employee/dashboard');
       } else {
         throw new Error('No token received');
@@ -70,7 +68,15 @@ const EmployeeLogin = () => {
         )}
         
         <h2 className="text-center mb-3">Employee Login</h2>
+        <p className="text-center mb-4">Enter your credentials to access the employee dashboard</p>
         
+        {/* Home Button */}
+        <div className="d-flex justify-content-center mb-4">
+          <Link to="/" className="btn btn-outline-secondary">
+            Back to Home
+          </Link>
+        </div>
+
         <Form onSubmit={handleSubmit}>
           <Form.Group className="mb-3">
             <Form.Label>Username</Form.Label>
@@ -94,7 +100,7 @@ const EmployeeLogin = () => {
             />
           </Form.Group>
 
-          <Button variant="primary" type="submit" className="w-100">
+          <Button variant="primary" type="submit" className="w-100 mb-3">
             Login
           </Button>
         </Form>

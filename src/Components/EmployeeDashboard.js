@@ -65,16 +65,25 @@ const EmployeeDashboard = () => {
   }, [activeSection, activeAnimalTab, animalSearchTerm]);
 
   // Animal Health states
-  const [activeHealthTab, setActiveHealthTab] = useState('add');
-  const [healthData, setHealthData] = useState([]);
-  const [newHealthReport, setNewHealthReport] = useState({
-    A_ID: '',
-    AnimalName: '',
-    Date: '',
-    Treatment: '',
-    Cost: ''
-  });
-  const [healthSearchTerm, setHealthSearchTerm] = useState('');
+const [activeHealthTab, setActiveHealthTab] = useState('add');
+const [healthData, setHealthData] = useState([]);
+const [newHealthReport, setNewHealthReport] = useState({
+  A_ID: '',
+  AnimalName: '',
+  Date: '',
+  Treatment: '',
+  Cost: ''
+});
+const [healthSearchTerm, setHealthSearchTerm] = useState('');
+const [healthError, setHealthError] = useState(null);
+const [healthLoading, setHealthLoading] = useState(false);
+
+// Add this useEffect hook for fetching health reports
+useEffect(() => {
+  if (activeSection === 'health' && activeHealthTab === 'view') {
+    fetchHealthReports();
+  }
+}, [activeSection, activeHealthTab, healthSearchTerm]);
 
   // Sales states
   const [activeSalesTab, setActiveSalesTab] = useState('add');
@@ -344,17 +353,99 @@ const EmployeeDashboard = () => {
       setLoading(false);
     }
   };
-
-  const handleAddHealthReport = (e) => {
-    e.preventDefault();
-    showAlert('Health report would be saved to database in backend implementation', 'success');
-    setNewHealthReport({
-      A_ID: '',
-      AnimalName: '',
-      Date: '',
-      Treatment: '',
-      Cost: ''
+  
+  // Add this function to fetch health reports
+  const fetchHealthReports = async () => {
+    try {
+      setHealthLoading(true);
+      setHealthError(null);
+      const token = localStorage.getItem('employeeToken');
+      
+      let url = '/api/health';
+      if (healthSearchTerm) {
+        url = `/api/health?animalId=${healthSearchTerm}`;
+      }
+    
+      const response = await axios.get(url, {
+        headers: {
+        Authorization: `Bearer ${token}`
+      }
     });
+    
+      setHealthData(response.data);
+      } catch (err) {
+      setHealthError(err.response?.data?.message || 'Failed to fetch health reports');
+      } finally {
+      setHealthLoading(false);
+      }
+  };
+
+  const handleAddHealthReport = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      
+      // Validate required fields
+      if (!newHealthReport.A_ID || !newHealthReport.AnimalName || !newHealthReport.Date || !newHealthReport.Treatment || !newHealthReport.Cost) {
+        throw new Error('Please fill all required fields');
+      }
+  
+      // Validate cost is a positive number
+      if (isNaN(newHealthReport.Cost)) {
+        throw new Error('Cost must be a number');
+      }
+      if (parseFloat(newHealthReport.Cost) <= 0) {
+        throw new Error('Cost must be greater than 0');
+      }
+  
+      const token = localStorage.getItem('employeeToken');
+      if (!token) {
+        throw new Error('Authentication token missing');
+      }
+  
+      const response = await axios.post('/api/health', {
+        animalId: newHealthReport.A_ID,
+        animalName: newHealthReport.AnimalName,
+        date: newHealthReport.Date,
+        treatment: newHealthReport.Treatment,
+        cost: parseFloat(newHealthReport.Cost)
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+  
+      if (response.status !== 201) {
+        throw new Error('Failed to add health report');
+      }
+  
+      // Reset form and show success
+      setNewHealthReport({
+        A_ID: '',
+        AnimalName: '',
+        Date: '',
+        Treatment: '',
+        Cost: ''
+      });
+      
+      showAlert('Health report added successfully!', 'success');
+      setActiveHealthTab('view');
+      fetchHealthReports();
+    } catch (err) {
+      let errorMessage = 'Failed to add health report';
+      if (err.response) {
+        errorMessage = err.response.data?.message || 
+                      err.response.data?.error || 
+                      err.response.statusText;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      showAlert(errorMessage, 'danger');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddSale = (e) => {
@@ -721,121 +812,164 @@ const EmployeeDashboard = () => {
   );
 
   const renderAnimalHealth = () => (
-    <Card className="p-4 mb-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Animal Health</h2>
-        <div>
-          <Button 
-            variant={activeHealthTab === 'add' ? 'primary' : 'outline-primary'}
-            className="me-2"
-            onClick={() => setActiveHealthTab('add')}
-          >
-            Add Health Report
-          </Button>
-          <Button 
-            variant={activeHealthTab === 'view' ? 'primary' : 'outline-primary'}
-            onClick={() => setActiveHealthTab('view')}
-          >
-            View Health Report
-          </Button>
-        </div>
+  <Card className="p-4 mb-4">
+    <div className="d-flex justify-content-between align-items-center mb-4">
+      <h2>Animal Health</h2>
+      <div>
+        <Button 
+          variant={activeHealthTab === 'add' ? 'primary' : 'outline-primary'}
+          className="me-2"
+          onClick={() => setActiveHealthTab('add')}
+        >
+          Add Health Report
+        </Button>
+        <Button 
+          variant={activeHealthTab === 'view' ? 'primary' : 'outline-primary'}
+          onClick={() => setActiveHealthTab('view')}
+        >
+          View Health Reports
+        </Button>
       </div>
+    </div>
 
-      {activeHealthTab === 'add' ? (
-        <Form onSubmit={handleAddHealthReport}>
-          <div className="row mb-3">
-            <Form.Group className="col-md-6">
-              <Form.Label>Animal ID</Form.Label>
-              <Form.Control 
-                type="text" 
-                required
-                value={newHealthReport.A_ID}
-                onChange={(e) => setNewHealthReport({...newHealthReport, A_ID: e.target.value})}
-              />
-            </Form.Group>
-            <Form.Group className="col-md-6">
-              <Form.Label>Animal Name</Form.Label>
-              <Form.Control 
-                type="text" 
-                required
-                value={newHealthReport.AnimalName}
-                onChange={(e) => setNewHealthReport({...newHealthReport, AnimalName: e.target.value})}
-              />
-            </Form.Group>
-          </div>
-
-          <Form.Group className="mb-3">
-            <Form.Label>Date</Form.Label>
+    {activeHealthTab === 'add' ? (
+      <Form onSubmit={handleAddHealthReport}>
+        <div className="row mb-3">
+          <Form.Group className="col-md-6">
+            <Form.Label>Animal ID</Form.Label>
             <Form.Control 
-              type="date" 
+              type="text" 
               required
-              value={newHealthReport.Date}
-              onChange={(e) => setNewHealthReport({...newHealthReport, Date: e.target.value})}
+              placeholder="e.g. DA001"
+              value={newHealthReport.A_ID}
+              onChange={(e) => setNewHealthReport({...newHealthReport, A_ID: e.target.value})}
             />
           </Form.Group>
-
-          <div className="row mb-3">
-            <Form.Group className="col-md-8">
-              <Form.Label>Treatment</Form.Label>
-              <Form.Control 
-                type="text" 
-                required
-                value={newHealthReport.Treatment}
-                onChange={(e) => setNewHealthReport({...newHealthReport, Treatment: e.target.value})}
-              />
-            </Form.Group>
-            <Form.Group className="col-md-4">
-              <Form.Label>Cost (Rs)</Form.Label>
-              <Form.Control 
-                type="number" 
-                required
-                value={newHealthReport.Cost}
-                onChange={(e) => setNewHealthReport({...newHealthReport, Cost: e.target.value})}
-              />
-            </Form.Group>
-          </div>
-
-          <div className="d-flex justify-content-end">
-            <Button variant="primary" type="submit">
-              Add Report
-            </Button>
-          </div>
-        </Form>
-      ) : (
-        <>
-          <InputGroup className="mb-3">
-            <Form.Control
-              placeholder="Search by Animal ID"
-              value={healthSearchTerm}
-              onChange={(e) => setHealthSearchTerm(e.target.value)}
+          <Form.Group className="col-md-6">
+            <Form.Label>Animal Name</Form.Label>
+            <Form.Control 
+              type="text" 
+              required
+              placeholder="e.g. Daisy"
+              value={newHealthReport.AnimalName}
+              onChange={(e) => setNewHealthReport({...newHealthReport, AnimalName: e.target.value})}
             />
-            <Button variant="outline-secondary">
-              Search
-            </Button>
-          </InputGroup>
+          </Form.Group>
+        </div>
 
+        <Form.Group className="mb-3">
+          <Form.Label>Treatment Date</Form.Label>
+          <Form.Control 
+            type="date" 
+            required
+            max={new Date().toISOString().split('T')[0]}
+            value={newHealthReport.Date}
+            onChange={(e) => setNewHealthReport({...newHealthReport, Date: e.target.value})}
+          />
+        </Form.Group>
+
+        <div className="row mb-3">
+          <Form.Group className="col-md-8">
+            <Form.Label>Treatment</Form.Label>
+            <Form.Control 
+              as="textarea"
+              rows={3}
+              required
+              placeholder="Describe the treatment given"
+              value={newHealthReport.Treatment}
+              onChange={(e) => setNewHealthReport({...newHealthReport, Treatment: e.target.value})}
+            />
+          </Form.Group>
+          <Form.Group className="col-md-4">
+            <Form.Label>Cost (Rs)</Form.Label>
+            <Form.Control 
+              type="number" 
+              min="0"
+              step="0.01"
+              required
+              placeholder="e.g. 500.50"
+              value={newHealthReport.Cost}
+              onChange={(e) => setNewHealthReport({...newHealthReport, Cost: e.target.value})}
+            />
+          </Form.Group>
+        </div>
+
+        <div className="d-flex justify-content-end">
+          <Button variant="primary" type="submit" disabled={loading}>
+            {loading ? (
+              <>
+                <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+                <span className="ms-2">Adding...</span>
+              </>
+            ) : 'Add Report'}
+          </Button>
+        </div>
+      </Form>
+    ) : (
+      <>
+        <InputGroup className="mb-3">
+          <Form.Control
+            placeholder="Search by Animal ID"
+            value={healthSearchTerm}
+            onChange={(e) => setHealthSearchTerm(e.target.value)}
+          />
+          <Button 
+            variant="outline-secondary" 
+            onClick={fetchHealthReports}
+            disabled={healthLoading}
+          >
+            Search
+          </Button>
+        </InputGroup>
+
+        {healthLoading ? (
+          <div className="text-center my-4">
+            <Spinner animation="border" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </Spinner>
+          </div>
+        ) : healthError ? (
+          <Alert variant="danger">{healthError}</Alert>
+        ) : (
           <Table striped bordered hover responsive>
             <thead>
               <tr>
                 <th>Animal ID</th>
                 <th>Name</th>
-                <th>Date</th>
+                <th>Treatment Date</th>
                 <th>Treatment</th>
                 <th>Cost (Rs)</th>
+                <th>Treated By</th>
+                <th>Recorded On</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td colSpan="5" className="text-center text-muted">
-                  No health reports found (backend will load data here)
-                </td>
-              </tr>
+              {healthData.length > 0 ? (
+                healthData.map((report) => (
+                  <tr key={report._id}>
+                    <td>{report.animalId}</td>
+                    <td>{report.animalName}</td>
+                    <td>{new Date(report.date).toLocaleDateString()}</td>
+                    <td>{report.treatment}</td>
+                    <td>{report.cost.toFixed(2)}</td>
+                    <td>{report.treatedBy?.name || 'Unknown'}</td>
+                    <td>{new Date(report.dateRecorded).toLocaleString()}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" className="text-center text-muted">
+                    No health reports found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </Table>
-        </>
-      )}
-    </Card>
-  );
+        )}
+      </>
+    )}
+  </Card>
+);
 
   const renderSales = () => (
     <Card className="p-4 mb-4">

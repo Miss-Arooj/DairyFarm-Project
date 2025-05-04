@@ -7,12 +7,24 @@ const asyncHandler = require('express-async-handler');
 const addHealthReport = asyncHandler(async (req, res) => {
   const { animalId, animalName, date, treatment, cost } = req.body;
 
+  // Validate required fields
+  if (!animalId || !animalName || !date || !treatment || !cost) {
+    res.status(400);
+    throw new Error('Please fill all required fields');
+  }
+
+  // Validate cost is a positive number
+  if (isNaN(cost) || parseFloat(cost) <= 0) {
+    res.status(400);
+    throw new Error('Cost must be a positive number');
+  }
+
   const healthReport = await AnimalHealth.create({
     animalId,
     animalName,
     date,
     treatment,
-    cost,
+    cost: parseFloat(cost),
     treatedBy: req.user._id
   });
 
@@ -30,7 +42,10 @@ const getHealthReports = asyncHandler(async (req, res) => {
     query.animalId = { $regex: animalId, $options: 'i' };
   }
 
-  const healthReports = await AnimalHealth.find(query).sort({ date: -1 });
+  const healthReports = await AnimalHealth.find(query)
+    .sort({ date: -1 })
+    .populate('treatedBy', 'name');
+  
   res.json(healthReports);
 });
 

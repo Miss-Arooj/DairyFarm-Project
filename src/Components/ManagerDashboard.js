@@ -29,34 +29,16 @@ const ManagerDashboard = () => {
   const [activeMilkTab, setActiveMilkTab] = useState('daily');
   const [milkData, setMilkData] = useState([]);
   const [milkSearchTerm, setMilkSearchTerm] = useState('');
-  const [newMilkRecord, setNewMilkRecord] = useState({
-    date: '',
-    animalId: '',
-    quantity: '',
-    quality: 'Good'
-  });
 
   // Sales State
   const [activeSalesTab, setActiveSalesTab] = useState('records');
   const [salesData, setSalesData] = useState([]);
   const [salesSearchTerm, setSalesSearchTerm] = useState('');
-  const [newSaleRecord, setNewSaleRecord] = useState({
-    date: '',
-    customerName: '',
-    productId: '',
-    amount: ''
-  });
 
   // Finance State
   const [activeFinanceTab, setActiveFinanceTab] = useState('expense');
   const [financeData, setFinanceData] = useState([]);
   const [financeSearchTerm, setFinanceSearchTerm] = useState('');
-  const [newFinanceRecord, setNewFinanceRecord] = useState({
-    date: '',
-    type: 'Revenue',
-    description: '',
-    amount: ''
-  });
 
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
 

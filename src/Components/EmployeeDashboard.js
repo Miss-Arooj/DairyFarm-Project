@@ -8,13 +8,15 @@ import Table from 'react-bootstrap/Table';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Card from 'react-bootstrap/Card';
 import InputGroup from 'react-bootstrap/InputGroup';
+import axios from 'axios';
+import Spinner from 'react-bootstrap/Spinner';
 
 const EmployeeDashboard = () => {
   const navigate = useNavigate();
   const [employeeData, setEmployeeData] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Check if employee is authenticated
     const token = localStorage.getItem('employeeToken');
     const storedEmployeeData = localStorage.getItem('employeeData');
     
@@ -30,7 +32,7 @@ const EmployeeDashboard = () => {
   
   // Milk Production states
   const [activeMilkTab, setActiveMilkTab] = useState('add');
-  const [milkData, setMilkData] = useState([]);
+  const [milkRecords, setMilkRecords] = useState([]);
   const [newMilkRecord, setNewMilkRecord] = useState({
     Production_Date: '',
     A_ID: '',
@@ -38,6 +40,8 @@ const EmployeeDashboard = () => {
     Quality: 'Good'
   });
   const [milkSearchTerm, setMilkSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
+  const [milkError, setMilkError] = useState(null);
 
   // Animal Records states
   const [activeAnimalTab, setActiveAnimalTab] = useState('add');
@@ -89,7 +93,7 @@ const EmployeeDashboard = () => {
   });
   const [productsSearchTerm, setProductsSearchTerm] = useState('');
 
-  // Farm Finance states (single add mode)
+  // Farm Finance states
   const [financeData, setFinanceData] = useState([]);
   const [newFinanceRecord, setNewFinanceRecord] = useState({
     Date: '',
@@ -115,18 +119,83 @@ const EmployeeDashboard = () => {
     navigate('/employee/login');
   };
 
-  // Form handlers (front-end only)
-  const handleAddMilkRecord = (e) => {
-    e.preventDefault();
-    showAlert('Milk record would be saved to database in backend implementation', 'success');
-    setNewMilkRecord({
-      Production_Date: '',
-      A_ID: '',
-      Quantity: '',
-      Quality: 'Good'
-    });
+  // Milk Production Functions
+  useEffect(() => {
+    if (activeSection === 'milk' && activeMilkTab === 'view') {
+      fetchMilkRecords();
+    }
+  }, [activeSection, activeMilkTab]);
+
+  const fetchMilkRecords = async () => {
+    try {
+      setLoading(true);
+      setMilkError(null);
+      const token = localStorage.getItem('employeeToken');
+      
+      let url = '/api/milk';
+      const params = new URLSearchParams();
+      
+      if (milkSearchTerm) {
+        params.append('animalId', milkSearchTerm);
+      }
+      if (dateFilter) {
+        params.append('date', dateFilter);
+      }
+      
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+      
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      setMilkRecords(response.data);
+    } catch (err) {
+      setMilkError(err.response?.data?.message || 'Failed to fetch milk records');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const handleAddMilkRecord = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('employeeToken');
+      
+      const response = await axios.post('/api/milk', {
+        productionDate: newMilkRecord.Production_Date,
+        animalId: newMilkRecord.A_ID,
+        quantity: parseFloat(newMilkRecord.Quantity),
+        quality: newMilkRecord.Quality
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      setNewMilkRecord({
+        Production_Date: '',
+        A_ID: '',
+        Quantity: '',
+        Quality: 'Good'
+      });
+      
+      showAlert('Milk record added successfully!', 'success');
+      setActiveMilkTab('view');
+      fetchMilkRecords();
+    } catch (err) {
+      showAlert(err.response?.data?.message || 'Failed to add milk record', 'danger');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Other form handlers (front-end only)
   const handleAddAnimal = (e) => {
     e.preventDefault();
     showAlert('Animal record would be saved to database in backend implementation', 'success');
@@ -218,6 +287,7 @@ const EmployeeDashboard = () => {
               required
               value={newMilkRecord.Production_Date}
               onChange={(e) => setNewMilkRecord({...newMilkRecord, Production_Date: e.target.value})}
+              max={new Date().toISOString().split('T')[0]}
             />
           </Form.Group>
 
@@ -237,6 +307,8 @@ const EmployeeDashboard = () => {
             <Form.Control 
               type="number" 
               step="0.1"
+              min="0.1"
+              max="50"
               required
               value={newMilkRecord.Quantity}
               onChange={(e) => setNewMilkRecord({...newMilkRecord, Quantity: e.target.value})}
@@ -257,41 +329,85 @@ const EmployeeDashboard = () => {
           </Form.Group>
 
           <div className="d-flex justify-content-end">
-            <Button variant="primary" type="submit">
-              Add Record
+            <Button variant="primary" type="submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+                  <span className="ms-2">Adding...</span>
+                </>
+              ) : 'Add Record'}
             </Button>
           </div>
         </Form>
       ) : (
         <>
-          <InputGroup className="mb-3">
-            <Form.Control
-              placeholder="Search by Animal ID"
-              value={milkSearchTerm}
-              onChange={(e) => setMilkSearchTerm(e.target.value)}
-            />
-            <Button variant="outline-secondary">
-              Search
-            </Button>
-          </InputGroup>
+          <div className="row mb-3">
+            <div className="col-md-6">
+              <InputGroup>
+                <Form.Control
+                  placeholder="Search by Animal ID"
+                  value={milkSearchTerm}
+                  onChange={(e) => setMilkSearchTerm(e.target.value)}
+                />
+                <Button 
+                  variant="outline-secondary" 
+                  onClick={fetchMilkRecords}
+                  disabled={loading}
+                >
+                  Search
+                </Button>
+              </InputGroup>
+            </div>
+            <div className="col-md-6">
+              <Form.Control
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                onBlur={fetchMilkRecords}
+              />
+            </div>
+          </div>
 
-          <Table striped bordered hover responsive>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Animal ID</th>
-                <th>Quantity (KG)</th>
-                <th>Quality</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colSpan="4" className="text-center text-muted">
-                  No milk production records found (backend will load data here)
-                </td>
-              </tr>
-            </tbody>
-          </Table>
+          {loading ? (
+            <div className="text-center my-4">
+              <Spinner animation="border" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+            </div>
+          ) : milkError ? (
+            <Alert variant="danger">{milkError}</Alert>
+          ) : (
+            <Table striped bordered hover responsive>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Animal ID</th>
+                  <th>Quantity (KG)</th>
+                  <th>Quality</th>
+                  <th>Recorded At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {milkRecords.length > 0 ? (
+                  milkRecords.map((record) => (
+                    <tr key={record._id}>
+                      <td>{new Date(record.productionDate).toLocaleDateString()}</td>
+                      <td>{record.animalId}</td>
+                      <td>{record.quantity}</td>
+                      <td>{record.quality}</td>
+                      <td>{new Date(record.date).toLocaleString()}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="text-center text-muted">
+                      No milk production records found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
+          )}
         </>
       )}
     </Card>
@@ -866,7 +982,13 @@ const EmployeeDashboard = () => {
   };
 
   if (!employeeData) {
-    return <div>Loading...</div>;
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
+        <Spinner animation="border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </Spinner>
+      </div>
+    );
   }
 
   return (

@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const MilkProductionSchema = new mongoose.Schema({
     productionDate: {
       type: Date,

@@ -86,6 +86,8 @@ useEffect(() => {
 }, [activeSection, activeHealthTab, healthSearchTerm]);
 
   // Sales states
+  const [salesError, setSalesError] = useState(null);
+  const [salesLoading, setSalesLoading] = useState(false);
   const [activeSalesTab, setActiveSalesTab] = useState('add');
   const [salesData, setSalesData] = useState([]);
   const [newSale, setNewSale] = useState({
@@ -96,6 +98,13 @@ useEffect(() => {
     Total_Cost: ''
   });
   const [salesSearchTerm, setSalesSearchTerm] = useState('');
+  
+  // Add this useEffect hook for fetching sales
+  useEffect(() => {
+    if (activeSection === 'sales' && activeSalesTab === 'view') {
+      fetchSales();
+    }
+  }, [activeSection, activeSalesTab, salesSearchTerm]);
 
   // Products states
   const [activeProductsTab, setActiveProductsTab] = useState('add');
@@ -448,9 +457,72 @@ useEffect(() => {
     }
   };
 
-  const handleAddSale = (e) => {
-    e.preventDefault();
-    showAlert('Sale record would be saved to database in backend implementation', 'success');
+  const fetchSales = async () => {
+    try {
+      setSalesLoading(true);
+      setSalesError(null);
+      const token = localStorage.getItem('employeeToken');
+      
+      let url = '/api/sales';
+      if (salesSearchTerm) {
+        url = `/api/sales?saleId=${salesSearchTerm}`;
+      }
+      
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      setSalesData(response.data);
+    } catch (err) {
+      setSalesError(err.response?.data?.message || 'Failed to fetch sales records');
+    } finally {
+      setSalesLoading(false);
+    }
+  };
+
+  const handleAddSale = async (e) => {
+  e.preventDefault();
+  try {
+    setLoading(true);
+    
+    // Validate required fields
+    if (!newSale.Sales_ID || !newSale.Sale_Date || !newSale.Customer_Name || !newSale.Product_ID || !newSale.Total_Cost) {
+      throw new Error('Please fill all required fields');
+    }
+
+    // Validate total cost is a positive number
+    if (isNaN(newSale.Total_Cost)) {
+      throw new Error('Total cost must be a number');
+    }
+    if (parseFloat(newSale.Total_Cost) <= 0) {
+      throw new Error('Total cost must be greater than 0');
+    }
+
+    const token = localStorage.getItem('employeeToken');
+    if (!token) {
+      throw new Error('Authentication token missing');
+    }
+
+    const response = await axios.post('/api/sales', {
+      saleId: newSale.Sales_ID,
+      saleDate: newSale.Sale_Date,
+      customerName: newSale.Customer_Name,
+      productId: newSale.Product_ID,
+      totalCost: parseFloat(newSale.Total_Cost)
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.status !== 201) {
+      throw new Error('Failed to add sale');
+    }
+
+    // Reset form and show success
     setNewSale({
       Sales_ID: '',
       Sale_Date: '',
@@ -458,7 +530,25 @@ useEffect(() => {
       Product_ID: '',
       Total_Cost: ''
     });
-  };
+    
+    showAlert('Sale added successfully!', 'success');
+    setActiveSalesTab('view');
+    fetchSales();
+  } catch (err) {
+    let errorMessage = 'Failed to add sale';
+    if (err.response) {
+      errorMessage = err.response.data?.message || 
+                    err.response.data?.error || 
+                    err.response.statusText;
+    } else if (err.message) {
+      errorMessage = err.message;
+    }
+    
+    showAlert(errorMessage, 'danger');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleAddProduct = (e) => {
     e.preventDefault();
@@ -971,122 +1061,164 @@ useEffect(() => {
   </Card>
 );
 
-  const renderSales = () => (
-    <Card className="p-4 mb-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Sales Management</h2>
-        <div>
-          <Button 
-            variant={activeSalesTab === 'add' ? 'primary' : 'outline-primary'}
-            className="me-2"
-            onClick={() => setActiveSalesTab('add')}
-          >
-            Add New Sale
-          </Button>
-          <Button 
-            variant={activeSalesTab === 'view' ? 'primary' : 'outline-primary'}
-            onClick={() => setActiveSalesTab('view')}
-          >
-            View Sales
-          </Button>
-        </div>
+const renderSales = () => (
+  <Card className="p-4 mb-4">
+    <div className="d-flex justify-content-between align-items-center mb-4">
+      <h2>Sales Management</h2>
+      <div>
+        <Button 
+          variant={activeSalesTab === 'add' ? 'primary' : 'outline-primary'}
+          className="me-2"
+          onClick={() => setActiveSalesTab('add')}
+        >
+          Add New Sale
+        </Button>
+        <Button 
+          variant={activeSalesTab === 'view' ? 'primary' : 'outline-primary'}
+          onClick={() => setActiveSalesTab('view')}
+        >
+          View Sales
+        </Button>
       </div>
+    </div>
 
-      {activeSalesTab === 'add' ? (
-        <Form onSubmit={handleAddSale}>
-          <div className="row mb-3">
-            <Form.Group className="col-md-6">
-              <Form.Label>Sales ID</Form.Label>
-              <Form.Control 
-                type="text" 
-                required
-                value={newSale.Sales_ID}
-                onChange={(e) => setNewSale({...newSale, Sales_ID: e.target.value})}
-              />
-            </Form.Group>
-            <Form.Group className="col-md-6">
-              <Form.Label>Sale Date</Form.Label>
-              <Form.Control 
-                type="date" 
-                required
-                value={newSale.Sale_Date}
-                onChange={(e) => setNewSale({...newSale, Sale_Date: e.target.value})}
-              />
-            </Form.Group>
-          </div>
-
-          <Form.Group className="mb-3">
-            <Form.Label>Customer Name</Form.Label>
+    {activeSalesTab === 'add' ? (
+      <Form onSubmit={handleAddSale}>
+        <div className="row mb-3">
+          <Form.Group className="col-md-6">
+            <Form.Label>Sales ID</Form.Label>
             <Form.Control 
               type="text" 
               required
-              value={newSale.Customer_Name}
-              onChange={(e) => setNewSale({...newSale, Customer_Name: e.target.value})}
+              placeholder="e.g. SALE001"
+              value={newSale.Sales_ID}
+              onChange={(e) => setNewSale({...newSale, Sales_ID: e.target.value})}
             />
           </Form.Group>
-
-          <div className="row mb-3">
-            <Form.Group className="col-md-6">
-              <Form.Label>Product ID</Form.Label>
-              <Form.Control 
-                type="text" 
-                required
-                value={newSale.Product_ID}
-                onChange={(e) => setNewSale({...newSale, Product_ID: e.target.value})}
-              />
-            </Form.Group>
-            <Form.Group className="col-md-6">
-              <Form.Label>Total Cost (Rs)</Form.Label>
-              <Form.Control 
-                type="number" 
-                required
-                value={newSale.Total_Cost}
-                onChange={(e) => setNewSale({...newSale, Total_Cost: e.target.value})}
-              />
-            </Form.Group>
-          </div>
-
-          <div className="d-flex justify-content-end">
-            <Button variant="primary" type="submit">
-              Add Sale
-            </Button>
-          </div>
-        </Form>
-      ) : (
-        <>
-          <InputGroup className="mb-3">
-            <Form.Control
-              placeholder="Search by Sales ID"
-              value={salesSearchTerm}
-              onChange={(e) => setSalesSearchTerm(e.target.value)}
+          <Form.Group className="col-md-6">
+            <Form.Label>Sale Date</Form.Label>
+            <Form.Control 
+              type="date" 
+              required
+              max={new Date().toISOString().split('T')[0]}
+              value={newSale.Sale_Date}
+              onChange={(e) => setNewSale({...newSale, Sale_Date: e.target.value})}
             />
-            <Button variant="outline-secondary">
-              Search
-            </Button>
-          </InputGroup>
+          </Form.Group>
+        </div>
 
+        <Form.Group className="mb-3">
+          <Form.Label>Customer Name</Form.Label>
+          <Form.Control 
+            type="text" 
+            required
+            placeholder="e.g. John Doe"
+            value={newSale.Customer_Name}
+            onChange={(e) => setNewSale({...newSale, Customer_Name: e.target.value})}
+          />
+        </Form.Group>
+
+        <div className="row mb-3">
+          <Form.Group className="col-md-6">
+            <Form.Label>Product ID</Form.Label>
+            <Form.Control 
+              type="text" 
+              required
+              placeholder="e.g. PROD001"
+              value={newSale.Product_ID}
+              onChange={(e) => setNewSale({...newSale, Product_ID: e.target.value})}
+            />
+          </Form.Group>
+          <Form.Group className="col-md-6">
+            <Form.Label>Total Cost (Rs)</Form.Label>
+            <Form.Control 
+              type="number" 
+              min="0"
+              step="0.01"
+              required
+              placeholder="e.g. 1500.50"
+              value={newSale.Total_Cost}
+              onChange={(e) => setNewSale({...newSale, Total_Cost: e.target.value})}
+            />
+          </Form.Group>
+        </div>
+
+        <div className="d-flex justify-content-end">
+          <Button variant="primary" type="submit" disabled={loading}>
+            {loading ? (
+              <>
+                <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+                <span className="ms-2">Adding...</span>
+              </>
+            ) : 'Add Sale'}
+          </Button>
+        </div>
+      </Form>
+    ) : (
+      <>
+        <InputGroup className="mb-3">
+          <Form.Control
+            placeholder="Search by Sale ID"
+            value={salesSearchTerm}
+            onChange={(e) => setSalesSearchTerm(e.target.value)}
+          />
+          <Button 
+            variant="outline-secondary" 
+            onClick={fetchSales}
+            disabled={salesLoading}
+          >
+            Search
+          </Button>
+        </InputGroup>
+
+        {salesLoading ? (
+          <div className="text-center my-4">
+            <Spinner animation="border" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </Spinner>
+          </div>
+        ) : salesError ? (
+          <Alert variant="danger">{salesError}</Alert>
+        ) : (
           <Table striped bordered hover responsive>
             <thead>
               <tr>
-                <th>Sales ID</th>
+                <th>Sale ID</th>
                 <th>Date</th>
                 <th>Customer</th>
                 <th>Product ID</th>
                 <th>Total (Rs)</th>
+                <th>Recorded By</th>
+                <th>Recorded On</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td colSpan="5" className="text-center text-muted">
-                  No sales records found (backend will load data here)
-                </td>
-              </tr>
+              {salesData.length > 0 ? (
+                salesData.map((sale) => (
+                  <tr key={sale._id}>
+                    <td>{sale.saleId}</td>
+                    <td>{new Date(sale.saleDate).toLocaleDateString()}</td>
+                    <td>{sale.customerName}</td>
+                    <td>{sale.productId}</td>
+                    <td>{sale.totalCost.toFixed(2)}</td>
+                    <td>{sale.recordedBy?.name || 'Unknown'}</td>
+                    <td>{new Date(sale.dateRecorded).toLocaleString()}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" className="text-center text-muted">
+                    No sales records found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </Table>
-        </>
-      )}
-    </Card>
-  );
+        )}
+      </>
+    )}
+  </Card>
+);
 
   const renderProducts = () => (
     <Card className="p-4 mb-4">

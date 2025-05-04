@@ -16,6 +16,10 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(cors({
+    origin: 'http://localhost:3000', // or your frontend URL
+    credentials: true
+}));
 
 // Route files
 const authRoutes = require('./routes/authRoutes');
@@ -23,6 +27,7 @@ const employeeRoutes = require('./routes/employeeRoutes');
 const milkRoutes = require('./routes/milkRoutes');
 const animalRoutes = require('./routes/animalRoutes');
 const healthRoutes = require('./routes/healthRoutes');
+const salesRoutes = require('./routes/salesRoutes');
 const financeRoutes = require('./routes/financeRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
@@ -33,6 +38,7 @@ app.use('/api/employees', employeeRoutes);
 app.use('/api/milk', milkRoutes);
 app.use('/api/animals', animalRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/sales', salesRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/dashboard', dashboardRoutes);

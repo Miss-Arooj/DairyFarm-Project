@@ -43,9 +43,11 @@ const EmployeeDashboard = () => {
   const [dateFilter, setDateFilter] = useState('');
   const [milkError, setMilkError] = useState(null);
 
-  // Animal Records states
-  const [activeAnimalTab, setActiveAnimalTab] = useState('add');
+  // Add these state variables to the existing ones:
   const [animalData, setAnimalData] = useState([]);
+  const [animalError, setAnimalError] = useState(null);
+  const [animalLoading, setAnimalLoading] = useState(false);
+  const [activeAnimalTab, setActiveAnimalTab] = useState('add');
   const [newAnimal, setNewAnimal] = useState({
     A_ID: '',
     Name: '',
@@ -55,6 +57,12 @@ const EmployeeDashboard = () => {
     Age: ''
   });
   const [animalSearchTerm, setAnimalSearchTerm] = useState('');
+  // Add this useEffect hook for fetching animals
+  useEffect(() => {
+    if (activeSection === 'animals' && activeAnimalTab === 'view') {
+      fetchAnimals();
+    }
+  }, [activeSection, activeAnimalTab, animalSearchTerm]);
 
   // Animal Health states
   const [activeHealthTab, setActiveHealthTab] = useState('add');
@@ -242,18 +250,99 @@ const EmployeeDashboard = () => {
     }
   };
 
-  // Other form handlers (front-end only)
-  const handleAddAnimal = (e) => {
+  const fetchAnimals = async () => {
+    try {
+      setAnimalLoading(true);
+      setAnimalError(null);
+      const token = localStorage.getItem('employeeToken');
+      
+      let url = '/api/animals';
+      if (animalSearchTerm) {
+        url = `/api/animals/search?term=${animalSearchTerm}`;
+      }
+      
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      setAnimalData(response.data);
+    } catch (err) {
+      setAnimalError(err.response?.data?.message || 'Failed to fetch animal records');
+    } finally {
+      setAnimalLoading(false);
+    }
+  };
+
+  const handleAddAnimal = async (e) => {
     e.preventDefault();
-    showAlert('Animal record would be saved to database in backend implementation', 'success');
-    setNewAnimal({
-      A_ID: '',
-      Name: '',
-      Weight: '',
-      Gender: 'Male',
-      Type: '',
-      Age: ''
-    });
+    try {
+      setLoading(true);
+      
+      // Validate required fields
+      if (!newAnimal.A_ID || !newAnimal.Name || !newAnimal.Weight || !newAnimal.Type || !newAnimal.Age) {
+        throw new Error('Please fill all required fields');
+      }
+  
+      // Validate weight is a positive number
+      if (isNaN(newAnimal.Weight)) {
+        throw new Error('Weight must be a number');
+      }
+      if (parseFloat(newAnimal.Weight) <= 0) {
+        throw new Error('Weight must be greater than 0');
+      }
+  
+      const token = localStorage.getItem('employeeToken');
+      if (!token) {
+        throw new Error('Authentication token missing');
+      }
+  
+      const response = await axios.post('/api/animals', {
+        animalId: newAnimal.A_ID,
+        name: newAnimal.Name,
+        weight: parseFloat(newAnimal.Weight),
+        gender: newAnimal.Gender,
+        type: newAnimal.Type,
+        age: newAnimal.Age
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+  
+      if (response.status !== 201) {
+        throw new Error('Failed to add animal');
+      }
+  
+      // Reset form and show success
+      setNewAnimal({
+        A_ID: '',
+        Name: '',
+        Weight: '',
+        Gender: 'Male',
+        Type: '',
+        Age: ''
+      });
+      
+      showAlert('Animal added successfully!', 'success');
+      setActiveAnimalTab('view');
+      fetchAnimals();
+    } catch (err) {
+      let errorMessage = 'Failed to add animal';
+      if (err.response) {
+        errorMessage = err.response.data?.message || 
+                      err.response.data?.error || 
+                      err.response.statusText;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      showAlert(errorMessage, 'danger');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddHealthReport = (e) => {
@@ -480,7 +569,7 @@ const EmployeeDashboard = () => {
           </Button>
         </div>
       </div>
-
+  
       {activeAnimalTab === 'add' ? (
         <Form onSubmit={handleAddAnimal}>
           <div className="row mb-3">
@@ -489,6 +578,7 @@ const EmployeeDashboard = () => {
               <Form.Control 
                 type="text" 
                 required
+                placeholder="e.g. DA001"
                 value={newAnimal.A_ID}
                 onChange={(e) => setNewAnimal({...newAnimal, A_ID: e.target.value})}
               />
@@ -498,19 +588,22 @@ const EmployeeDashboard = () => {
               <Form.Control 
                 type="number" 
                 step="0.1"
+                min="0.1"
                 required
+                placeholder="e.g. 150.5"
                 value={newAnimal.Weight}
                 onChange={(e) => setNewAnimal({...newAnimal, Weight: e.target.value})}
               />
             </Form.Group>
           </div>
-
+  
           <div className="row mb-3">
             <Form.Group className="col-md-6">
               <Form.Label>Animal Name</Form.Label>
               <Form.Control 
                 type="text" 
                 required
+                placeholder="e.g. Daisy"
                 value={newAnimal.Name}
                 onChange={(e) => setNewAnimal({...newAnimal, Name: e.target.value})}
               />
@@ -526,13 +619,14 @@ const EmployeeDashboard = () => {
               </Form.Select>
             </Form.Group>
           </div>
-
+  
           <div className="row mb-3">
             <Form.Group className="col-md-6">
               <Form.Label>Type</Form.Label>
               <Form.Control 
                 type="text" 
                 required
+                placeholder="e.g. Dairy Cow"
                 value={newAnimal.Type}
                 onChange={(e) => setNewAnimal({...newAnimal, Type: e.target.value})}
               />
@@ -542,15 +636,21 @@ const EmployeeDashboard = () => {
               <Form.Control 
                 type="text" 
                 required
+                placeholder="e.g. 2 years"
                 value={newAnimal.Age}
                 onChange={(e) => setNewAnimal({...newAnimal, Age: e.target.value})}
               />
             </Form.Group>
           </div>
-
+  
           <div className="d-flex justify-content-end">
-            <Button variant="primary" type="submit">
-              Add Animal
+            <Button variant="primary" type="submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+                  <span className="ms-2">Adding...</span>
+                </>
+              ) : 'Add Animal'}
             </Button>
           </div>
         </Form>
@@ -558,34 +658,63 @@ const EmployeeDashboard = () => {
         <>
           <InputGroup className="mb-3">
             <Form.Control
-              placeholder="Search by Animal ID"
+              placeholder="Search by Animal ID, Name or Type"
               value={animalSearchTerm}
               onChange={(e) => setAnimalSearchTerm(e.target.value)}
             />
-            <Button variant="outline-secondary">
+            <Button 
+              variant="outline-secondary" 
+              onClick={fetchAnimals}
+              disabled={animalLoading}
+            >
               Search
             </Button>
           </InputGroup>
-
-          <Table striped bordered hover responsive>
-            <thead>
-              <tr>
-                <th>Animal ID</th>
-                <th>Name</th>
-                <th>Weight (KG)</th>
-                <th>Gender</th>
-                <th>Type</th>
-                <th>Age</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colSpan="6" className="text-center text-muted">
-                  No animal records found (backend will load data here)
-                </td>
-              </tr>
-            </tbody>
-          </Table>
+  
+          {animalLoading ? (
+            <div className="text-center my-4">
+              <Spinner animation="border" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+            </div>
+          ) : animalError ? (
+            <Alert variant="danger">{animalError}</Alert>
+          ) : (
+            <Table striped bordered hover responsive>
+              <thead>
+                <tr>
+                  <th>Animal ID</th>
+                  <th>Name</th>
+                  <th>Weight (KG)</th>
+                  <th>Gender</th>
+                  <th>Type</th>
+                  <th>Age</th>
+                  <th>Added On</th>
+                </tr>
+              </thead>
+              <tbody>
+                {animalData.length > 0 ? (
+                  animalData.map((animal) => (
+                    <tr key={animal._id}>
+                      <td>{animal.animalId}</td>
+                      <td>{animal.name}</td>
+                      <td>{animal.weight}</td>
+                      <td>{animal.gender}</td>
+                      <td>{animal.type}</td>
+                      <td>{animal.age}</td>
+                      <td>{new Date(animal.date).toLocaleDateString()}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="7" className="text-center text-muted">
+                      No animal records found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
+          )}
         </>
       )}
     </Card>

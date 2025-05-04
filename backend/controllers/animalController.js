@@ -7,12 +7,20 @@ const asyncHandler = require('express-async-handler');
 const addAnimal = asyncHandler(async (req, res) => {
   const { animalId, name, weight, gender, type, age } = req.body;
 
+  // Validate required fields
+  if (!animalId || !name || !weight || !gender || !type || !age) {
+    res.status(400);
+    throw new Error('Please fill all required fields');
+  }
+
+  // Check if animal already exists
   const animalExists = await Animal.findOne({ animalId });
   if (animalExists) {
     res.status(400);
     throw new Error('Animal already exists');
   }
 
+  // Create new animal
   const animal = await Animal.create({
     animalId,
     name,

@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import Alert from 'react-bootstrap/Alert';
+import Button from 'react-bootstrap/Button';
+import Form from 'react-bootstrap/Form';
 import axios from 'axios';
 
 const EmployeeLogin = () => {
@@ -7,6 +10,7 @@ const EmployeeLogin = () => {
     username: '',
     password: ''
   });
+  const [alert, setAlert] = useState({ show: false, message: '', variant: 'danger' });
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -19,62 +23,81 @@ const EmployeeLogin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!formData.username || !formData.password) {
+      setAlert({
+        show: true,
+        message: 'Please fill in all fields',
+        variant: 'danger'
+      });
+      return;
+    }
+
     try {
-      const response = await axios.post('/api/auth/employee-login', formData);
-      localStorage.setItem('token', response.data.token);
-      navigate('/employee/dashboard');
+      const response = await axios.post('http://localhost:5000/api/auth/employee-login', formData);
+      
+      if (response.data && response.data.token) {
+        // Store token and employee data
+        localStorage.setItem('employeeToken', response.data.token);
+        localStorage.setItem('employeeData', JSON.stringify({
+          id: response.data._id,
+          name: response.data.name,
+          role: response.data.role
+        }));
+        
+        // Redirect to dashboard
+        navigate('/employee/dashboard');
+      } else {
+        throw new Error('No token received');
+      }
     } catch (err) {
-      alert(err.response?.data?.message || 'Login failed');
+      console.error('Login error:', err);
+      setAlert({
+        show: true,
+        message: err.response?.data?.message || err.message || 'Login failed. Please try again.',
+        variant: 'danger'
+      });
     }
   };
 
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2 className="text-center mb-3">Welcome</h2>
-        <p className="text-center mb-4 text-muted">Enter your Employee username and password to login</p>
+        {alert.show && (
+          <Alert variant={alert.variant} onClose={() => setAlert({...alert, show: false})} dismissible>
+            {alert.message}
+          </Alert>
+        )}
         
-        <div className="d-flex justify-content-center mb-4">
-          <Link to="/" className="btn btn-outline-secondary">Home</Link>
-        </div>
-
-        <div className="text-center mb-4">
-          <img 
-            src="https://cdn-icons-png.flaticon.com/512/3237/3237472.png" 
-            alt="Employee" 
-            className="auth-image"
-          />
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label htmlFor="username" className="form-label">Username</label>
-            <input
+        <h2 className="text-center mb-3">Employee Login</h2>
+        
+        <Form onSubmit={handleSubmit}>
+          <Form.Group className="mb-3">
+            <Form.Label>Username</Form.Label>
+            <Form.Control
               type="text"
-              className="form-control"
-              id="username"
               name="username"
               value={formData.username}
               onChange={handleChange}
               required
             />
-          </div>
+          </Form.Group>
 
-          <div className="mb-4">
-            <label htmlFor="password" className="form-label">Password</label>
-            <input
+          <Form.Group className="mb-3">
+            <Form.Label>Password</Form.Label>
+            <Form.Control
               type="password"
-              className="form-control"
-              id="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
               required
             />
-          </div>
+          </Form.Group>
 
-          <button type="submit" className="btn btn-primary w-100 py-2">Login</button>
-        </form>
+          <Button variant="primary" type="submit" className="w-100">
+            Login
+          </Button>
+        </Form>
       </div>
     </div>
   );

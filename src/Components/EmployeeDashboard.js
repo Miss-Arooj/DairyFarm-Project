@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import Alert from 'react-bootstrap/Alert';
 import Button from 'react-bootstrap/Button';
@@ -9,6 +10,21 @@ import Card from 'react-bootstrap/Card';
 import InputGroup from 'react-bootstrap/InputGroup';
 
 const EmployeeDashboard = () => {
+  const navigate = useNavigate();
+  const [employeeData, setEmployeeData] = useState(null);
+
+  useEffect(() => {
+    // Check if employee is authenticated
+    const token = localStorage.getItem('employeeToken');
+    const storedEmployeeData = localStorage.getItem('employeeData');
+    
+    if (!token || !storedEmployeeData) {
+      navigate('/employee/login');
+    } else {
+      setEmployeeData(JSON.parse(storedEmployeeData));
+    }
+  }, [navigate]);
+
   // Main navigation state
   const [activeSection, setActiveSection] = useState('milk');
   
@@ -91,6 +107,12 @@ const EmployeeDashboard = () => {
       variant
     });
     setTimeout(() => setAlert({ ...alert, show: false }), 3000);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('employeeToken');
+    localStorage.removeItem('employeeData');
+    navigate('/employee/login');
   };
 
   // Form handlers (front-end only)
@@ -843,6 +865,10 @@ const EmployeeDashboard = () => {
     }
   };
 
+  if (!employeeData) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="d-flex" style={{ minHeight: '100vh' }}>
       {/* Navigation Sidebar */}
@@ -902,7 +928,9 @@ const EmployeeDashboard = () => {
         </ListGroup>
         
         <div className="mt-auto">
-          <Link to="/" className="btn btn-outline-light w-100">Logout</Link>
+          <Button variant="outline-light" className="w-100" onClick={handleLogout}>
+            Logout
+          </Button>
         </div>
       </div>
 

@@ -39,32 +39,27 @@ const ManagerDashboard = () => {
   const [financeData, setFinanceData] = useState([]);
   const [financeSearchTerm, setFinanceSearchTerm] = useState('');
 
-  // Alert State
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
 
   useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get('/api/employees', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        setEmployees(response.data);
-      } catch (err) {
-        if (err.response?.status === 404) {
-          setEmployees([]);
-        } else {
-          showAlert(err.response?.data?.message || 'Failed to load employees', 'danger');
-        }
-      }
-    };
-    
-    if (activeSection === 'employees') {
+    if (activeSection === 'employees' && activeEmpTab === 'view') {
       fetchEmployees();
     }
-  }, [activeSection]);
+  }, [activeSection, activeEmpTab]);
+
+  const fetchEmployees = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:5000/api/employees', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setEmployees(response.data);
+    } catch (err) {
+      showAlert(err.response?.data?.message || 'Failed to load employees', 'danger');
+    }
+  };
 
   const showAlert = (message, variant) => {
     setAlert({ show: true, message, variant });
@@ -74,20 +69,18 @@ const ManagerDashboard = () => {
   const handleAddEmployee = async (e) => {
     e.preventDefault();
     
-    // Validation
-    if (!newEmployee.name || !newEmployee.username || !newEmployee.password) {
-      showAlert('Please fill all required fields', 'danger');
-      return;
-    }
-
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('/api/employees', newEmployee, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const response = await axios.post(
+        'http://localhost:5000/api/employees',
+        newEmployee,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
-      });
+      );
       
       setEmployees(prev => [...prev, response.data]);
       setNewEmployee({
@@ -102,12 +95,11 @@ const ManagerDashboard = () => {
       setActiveEmpTab('view');
     } catch (err) {
       showAlert(err.response?.data?.message || 'Failed to add employee', 'danger');
-      console.error('Error adding employee:', err);
     }
   };
 
   const filteredEmployees = employees.filter(emp =>
-    emp._id?.toString().includes(empSearchTerm) ||
+    emp.employeeId?.toString().includes(empSearchTerm) ||
     emp.name?.toLowerCase().includes(empSearchTerm.toLowerCase())
   );
 
@@ -148,7 +140,7 @@ const ManagerDashboard = () => {
         <>
           <InputGroup className="mb-3">
             <Form.Control
-              placeholder="Search by Employee ID"
+              placeholder="Search by Employee ID or Name"
               value={empSearchTerm}
               onChange={(e) => setEmpSearchTerm(e.target.value)}
             />
@@ -160,19 +152,19 @@ const ManagerDashboard = () => {
           <Table striped bordered hover responsive>
             <thead>
               <tr>
-                <th>ID</th>
+                <th>Employee ID</th>
                 <th>Name</th>
                 <th>Gender</th>
                 <th>Contact</th>
-                <th>Salary (PKR)</th>
+                <th>Salary (Rs)</th>
                 <th>Username</th>
               </tr>
             </thead>
             <tbody>
               {filteredEmployees.length > 0 ? (
                 filteredEmployees.map(emp => (
-                  <tr key={emp.id}>
-                    <td>{emp.id}</td>
+                  <tr key={emp._id}>
+                    <td>{emp.employeeId}</td>
                     <td>{emp.name}</td>
                     <td>{emp.gender}</td>
                     <td>{emp.contact}</td>
@@ -183,7 +175,7 @@ const ManagerDashboard = () => {
               ) : (
                 <tr>
                   <td colSpan="6" className="text-center text-muted">
-                    No employees found.
+                    No employees found
                   </td>
                 </tr>
               )}
@@ -208,6 +200,7 @@ const ManagerDashboard = () => {
             <Form.Select
               value={newEmployee.gender}
               onChange={(e) => setNewEmployee({ ...newEmployee, gender: e.target.value })}
+              required
             >
               <option value="Male">Male</option>
               <option value="Female">Female</option>
@@ -227,7 +220,7 @@ const ManagerDashboard = () => {
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Salary (PKR)</Form.Label>
+            <Form.Label>Salary (Rs)</Form.Label>
             <Form.Control
               type="number"
               placeholder="Enter salary"
@@ -241,9 +234,10 @@ const ManagerDashboard = () => {
             <Form.Label>Username</Form.Label>
             <Form.Control
               type="text"
-              placeholder="Enter username"
+              placeholder="Enter username (min 6 chars)"
               value={newEmployee.username}
               onChange={(e) => setNewEmployee({ ...newEmployee, username: e.target.value })}
+              minLength={6}
               required
             />
           </Form.Group>
@@ -252,9 +246,10 @@ const ManagerDashboard = () => {
             <Form.Label>Password</Form.Label>
             <Form.Control
               type="password"
-              placeholder="Enter password"
+              placeholder="Enter password (min 6 chars)"
               value={newEmployee.password}
               onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })}
+              minLength={6}
               required
             />
           </Form.Group>
@@ -273,6 +268,44 @@ const ManagerDashboard = () => {
         </Form>
       )}
     </Card>
+  );
+
+  return (
+    <div className="d-flex" style={{ minHeight: '100vh' }}>
+      <div className="bg-dark text-white p-3" style={{ width: '250px' }}>
+        <h4 className="text-center mb-4">Dairy Farm Manager</h4>
+        <hr className="bg-light" />
+        <ListGroup variant="flush" className="mb-4">
+          <ListGroup.Item 
+            action 
+            active={activeSection === 'employees'}
+            className={activeSection === 'employees' ? 'bg-primary border-0' : 'bg-dark text-white border-0'}
+            onClick={() => setActiveSection('employees')}
+          >
+            Manage Employees
+          </ListGroup.Item>
+          {/* Other menu items... */}
+        </ListGroup>
+        <div className="mt-auto">
+          <Link to="/" className="btn btn-outline-light w-100">Logout</Link>
+        </div>
+      </div>
+
+      <div className="flex-grow-1 p-4">
+        {alert.show && (
+          <Alert
+            variant={alert.variant}
+            onClose={() => setAlert(prev => ({ ...prev, show: false }))}
+            dismissible
+            className="position-fixed top-0 end-0 m-3"
+            style={{ zIndex: 9999 }}
+          >
+            {alert.message}
+          </Alert>
+        )}
+        {renderEmployeesSection()}
+      </div>
+    </div>
   );
 
   const renderMilkProductionSection = () => (

@@ -4,7 +4,8 @@ const { protect, managerOnly } = require('../middleware/auth');
 const {
   addEmployee,
   getEmployees,
-  searchEmployees
+  searchEmployees,
+  resetEmployeePassword // Add this import
 } = require('../controllers/employeeController');
 
 router.route('/')
@@ -13,5 +14,7 @@ router.route('/')
 
 router.route('/search')
   .get(protect, managerOnly, searchEmployees);
+
+router.post('/reset-password', protect, managerOnly, resetEmployeePassword);
 
 module.exports = router;

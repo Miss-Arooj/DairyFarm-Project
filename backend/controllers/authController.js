@@ -73,25 +73,39 @@ const loginManager = asyncHandler(async (req, res) => {
 // @route   POST /api/auth/employee-login
 // @access  Public
 const loginEmployee = asyncHandler(async (req, res) => {
-  const { username, password } = req.body;
-
-  // Check for employee
-  const employee = await Employee.findOne({ username });
-
-  if (employee && (await bcrypt.compare(password, employee.password))) {
-    res.json({
+    const { username, password } = req.body;
+  
+    if (!username || !password) {
+      res.status(400);
+      throw new Error('Please provide both username and password');
+    }
+  
+    const employee = await Employee.findOne({ username }).select('+password');
+    
+    if (!employee) {
+      res.status(401);
+      throw new Error('Invalid credentials');
+    }
+  
+    // Simple password comparison (for development)
+    const isPasswordValid = password === employee.password;
+    
+    if (!isPasswordValid) {
+      res.status(401);
+      throw new Error('Invalid credentials');
+    }
+  
+    const token = generateToken(employee._id, 'employee');
+  
+    res.status(200).json({
       _id: employee._id,
       employeeId: employee.employeeId,
       name: employee.name,
       username: employee.username,
       role: employee.role,
-      token: generateToken(employee._id, 'employee')
+      token
     });
-  } else {
-    res.status(401);
-    throw new Error('Invalid credentials');
-  }
-});
+  });
 
 // Generate JWT
 const generateToken = (id, role) => {

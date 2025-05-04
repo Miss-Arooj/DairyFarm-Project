@@ -12,6 +12,7 @@ import axios from 'axios';
 const ManagerDashboard = () => {
   const [activeSection, setActiveSection] = useState('employees');
 
+  // Employee State
   const [activeEmpTab, setActiveEmpTab] = useState('view');
   const [employees, setEmployees] = useState([]);
   const [empSearchTerm, setEmpSearchTerm] = useState('');
@@ -28,24 +29,48 @@ const ManagerDashboard = () => {
   const [activeMilkTab, setActiveMilkTab] = useState('daily');
   const [milkData, setMilkData] = useState([]);
   const [milkSearchTerm, setMilkSearchTerm] = useState('');
+  const [newMilkRecord, setNewMilkRecord] = useState({
+    date: '',
+    animalId: '',
+    quantity: '',
+    quality: 'Good'
+  });
 
   // Sales State
   const [activeSalesTab, setActiveSalesTab] = useState('records');
   const [salesData, setSalesData] = useState([]);
   const [salesSearchTerm, setSalesSearchTerm] = useState('');
+  const [newSaleRecord, setNewSaleRecord] = useState({
+    date: '',
+    customerName: '',
+    productId: '',
+    amount: ''
+  });
 
   // Finance State
   const [activeFinanceTab, setActiveFinanceTab] = useState('expense');
   const [financeData, setFinanceData] = useState([]);
   const [financeSearchTerm, setFinanceSearchTerm] = useState('');
+  const [newFinanceRecord, setNewFinanceRecord] = useState({
+    date: '',
+    type: 'Revenue',
+    description: '',
+    amount: ''
+  });
 
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
 
   useEffect(() => {
     if (activeSection === 'employees' && activeEmpTab === 'view') {
       fetchEmployees();
+    } else if (activeSection === 'milk' && activeMilkTab === 'daily') {
+      fetchMilkRecords();
+    } else if (activeSection === 'sales' && activeSalesTab === 'records') {
+      fetchSalesRecords();
+    } else if (activeSection === 'finance' && activeFinanceTab === 'expense') {
+      fetchFinanceRecords();
     }
-  }, [activeSection, activeEmpTab]);
+  }, [activeSection, activeEmpTab, activeMilkTab, activeSalesTab, activeFinanceTab]);
 
   const fetchEmployees = async () => {
     try {
@@ -58,6 +83,48 @@ const ManagerDashboard = () => {
       setEmployees(response.data);
     } catch (err) {
       showAlert(err.response?.data?.message || 'Failed to load employees', 'danger');
+    }
+  };
+
+  const fetchMilkRecords = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:5000/api/milk', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setMilkData(response.data);
+    } catch (err) {
+      showAlert(err.response?.data?.message || 'Failed to load milk records', 'danger');
+    }
+  };
+
+  const fetchSalesRecords = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:5000/api/sales', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setSalesData(response.data);
+    } catch (err) {
+      showAlert(err.response?.data?.message || 'Failed to load sales records', 'danger');
+    }
+  };
+
+  const fetchFinanceRecords = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:5000/api/finance', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setFinanceData(response.data);
+    } catch (err) {
+      showAlert(err.response?.data?.message || 'Failed to load finance records', 'danger');
     }
   };
 
@@ -104,15 +171,18 @@ const ManagerDashboard = () => {
   );
 
   const filteredMilkData = milkData.filter(item =>
-    item.A_ID?.toLowerCase().includes(milkSearchTerm.toLowerCase())
+    item.animalId?.toLowerCase().includes(milkSearchTerm.toLowerCase()) ||
+    item.date?.toLowerCase().includes(milkSearchTerm.toLowerCase())
   );
 
   const filteredSalesData = salesData.filter(item =>
-    item.Sales_ID?.toLowerCase().includes(salesSearchTerm.toLowerCase())
+    item.salesId?.toString().includes(salesSearchTerm) ||
+    item.customerName?.toLowerCase().includes(salesSearchTerm.toLowerCase())
   );
 
   const filteredFinanceData = financeData.filter(item =>
-    item.Date?.toLowerCase().includes(financeSearchTerm.toLowerCase())
+    item.date?.toLowerCase().includes(financeSearchTerm.toLowerCase()) ||
+    item.description?.toLowerCase().includes(financeSearchTerm.toLowerCase())
   );
 
   const renderEmployeesSection = () => (
@@ -270,44 +340,6 @@ const ManagerDashboard = () => {
     </Card>
   );
 
-  return (
-    <div className="d-flex" style={{ minHeight: '100vh' }}>
-      <div className="bg-dark text-white p-3" style={{ width: '250px' }}>
-        <h4 className="text-center mb-4">Dairy Farm Manager</h4>
-        <hr className="bg-light" />
-        <ListGroup variant="flush" className="mb-4">
-          <ListGroup.Item 
-            action 
-            active={activeSection === 'employees'}
-            className={activeSection === 'employees' ? 'bg-primary border-0' : 'bg-dark text-white border-0'}
-            onClick={() => setActiveSection('employees')}
-          >
-            Manage Employees
-          </ListGroup.Item>
-          {/* Other menu items... */}
-        </ListGroup>
-        <div className="mt-auto">
-          <Link to="/" className="btn btn-outline-light w-100">Logout</Link>
-        </div>
-      </div>
-
-      <div className="flex-grow-1 p-4">
-        {alert.show && (
-          <Alert
-            variant={alert.variant}
-            onClose={() => setAlert(prev => ({ ...prev, show: false }))}
-            dismissible
-            className="position-fixed top-0 end-0 m-3"
-            style={{ zIndex: 9999 }}
-          >
-            {alert.message}
-          </Alert>
-        )}
-        {renderEmployeesSection()}
-      </div>
-    </div>
-  );
-
   const renderMilkProductionSection = () => (
     <Card className="p-4 mb-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -333,7 +365,7 @@ const ManagerDashboard = () => {
         <>
           <InputGroup className="mb-3">
             <Form.Control
-              placeholder="Search by Animal ID"
+              placeholder="Search by Animal ID or Date"
               value={milkSearchTerm}
               onChange={(e) => setMilkSearchTerm(e.target.value)}
             />
@@ -352,11 +384,22 @@ const ManagerDashboard = () => {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td colSpan="4" className="text-center text-muted">
-                  No milk production records found (backend will load data here)
-                </td>
-              </tr>
+              {filteredMilkData.length > 0 ? (
+                filteredMilkData.map((record, index) => (
+                  <tr key={index}>
+                    <td>{record.date}</td>
+                    <td>{record.animalId}</td>
+                    <td>{record.quantity}</td>
+                    <td>{record.quality}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="text-center text-muted">
+                    No milk production records found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </Table>
         </>
@@ -393,7 +436,7 @@ const ManagerDashboard = () => {
         <>
           <InputGroup className="mb-3">
             <Form.Control
-              placeholder="Search by Sales ID"
+              placeholder="Search by Sales ID or Customer Name"
               value={salesSearchTerm}
               onChange={(e) => setSalesSearchTerm(e.target.value)}
             />
@@ -409,15 +452,27 @@ const ManagerDashboard = () => {
                 <th>Sales ID</th>
                 <th>Customer Name</th>
                 <th>Product ID</th>
-                <th>Amount (PKR)</th>
+                <th>Amount (Rs)</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td colSpan="5" className="text-center text-muted">
-                  No sales records found (backend will load data here)
-                </td>
-              </tr>
+              {filteredSalesData.length > 0 ? (
+                filteredSalesData.map((sale, index) => (
+                  <tr key={index}>
+                    <td>{sale.date}</td>
+                    <td>{sale.salesId}</td>
+                    <td>{sale.customerName}</td>
+                    <td>{sale.productId}</td>
+                    <td>{sale.amount}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="text-center text-muted">
+                    No sales records found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </Table>
         </>
@@ -454,7 +509,7 @@ const ManagerDashboard = () => {
         <>
           <InputGroup className="mb-3">
             <Form.Control
-              placeholder="Search by Date"
+              placeholder="Search by Date or Description"
               value={financeSearchTerm}
               onChange={(e) => setFinanceSearchTerm(e.target.value)}
             />
@@ -467,17 +522,28 @@ const ManagerDashboard = () => {
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Revenue (PKR)</th>
-                <th>Expense (PKR)</th>
-                <th>Profit (PKR)</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Amount (Rs)</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td colSpan="4" className="text-center text-muted">
-                  No finance records found (backend will load data here)
-                </td>
-              </tr>
+              {filteredFinanceData.length > 0 ? (
+                filteredFinanceData.map((record, index) => (
+                  <tr key={index}>
+                    <td>{record.date}</td>
+                    <td>{record.type}</td>
+                    <td>{record.description}</td>
+                    <td>{record.amount}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="text-center text-muted">
+                    No finance records found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </Table>
         </>
@@ -510,24 +576,36 @@ const ManagerDashboard = () => {
         <h4 className="text-center mb-4">Dairy Farm Manager</h4>
         <hr className="bg-light" />
         <ListGroup variant="flush" className="mb-4">
-          <ListGroup.Item action active={activeSection === 'employees'}
+          <ListGroup.Item 
+            action 
+            active={activeSection === 'employees'}
             className={activeSection === 'employees' ? 'bg-primary border-0' : 'bg-dark text-white border-0'}
-            onClick={() => setActiveSection('employees')}>
+            onClick={() => setActiveSection('employees')}
+          >
             Manage Employees
           </ListGroup.Item>
-          <ListGroup.Item action active={activeSection === 'milk'}
+          <ListGroup.Item 
+            action 
+            active={activeSection === 'milk'}
             className={activeSection === 'milk' ? 'bg-primary border-0' : 'bg-dark text-white border-0'}
-            onClick={() => setActiveSection('milk')}>
+            onClick={() => setActiveSection('milk')}
+          >
             Milk Production
           </ListGroup.Item>
-          <ListGroup.Item action active={activeSection === 'sales'}
+          <ListGroup.Item 
+            action 
+            active={activeSection === 'sales'}
             className={activeSection === 'sales' ? 'bg-primary border-0' : 'bg-dark text-white border-0'}
-            onClick={() => setActiveSection('sales')}>
+            onClick={() => setActiveSection('sales')}
+          >
             Sales
           </ListGroup.Item>
-          <ListGroup.Item action active={activeSection === 'finance'}
+          <ListGroup.Item 
+            action 
+            active={activeSection === 'finance'}
             className={activeSection === 'finance' ? 'bg-primary border-0' : 'bg-dark text-white border-0'}
-            onClick={() => setActiveSection('finance')}>
+            onClick={() => setActiveSection('finance')}
+          >
             Finance Records
           </ListGroup.Item>
         </ListGroup>

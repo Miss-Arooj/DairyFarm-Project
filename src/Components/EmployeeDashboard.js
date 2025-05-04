@@ -10,6 +10,7 @@ import Card from 'react-bootstrap/Card';
 import InputGroup from 'react-bootstrap/InputGroup';
 import axios from 'axios';
 import Spinner from 'react-bootstrap/Spinner';
+import Badge from 'react-bootstrap/Badge';
 
 const EmployeeDashboard = () => {
   const navigate = useNavigate();
@@ -109,6 +110,8 @@ useEffect(() => {
   // Products states
   const [activeProductsTab, setActiveProductsTab] = useState('add');
   const [productsData, setProductsData] = useState([]);
+  const [productsError, setProductsError] = useState(null);
+  const [productsSearchTerm, setProductsSearchTerm] = useState('');
   const [newProduct, setNewProduct] = useState({
     Product_ID: '',
     Product_Name: '',
@@ -117,7 +120,6 @@ useEffect(() => {
     Production_Date: '',
     Expiration_Date: ''
   });
-  const [productsSearchTerm, setProductsSearchTerm] = useState('');
 
   // Farm Finance states
   const [financeData, setFinanceData] = useState([]);
@@ -550,9 +552,81 @@ useEffect(() => {
   }
 };
 
-  const handleAddProduct = (e) => {
-    e.preventDefault();
-    showAlert('Product record would be saved to database in backend implementation', 'success');
+// Fetch products function
+const fetchProducts = async () => {
+  try {
+    setLoading(true);
+    setProductsError(null);
+    const token = localStorage.getItem('employeeToken');
+    
+    let url = '/api/products';
+    if (productsSearchTerm) {
+      url = `/api/products?search=${encodeURIComponent(productsSearchTerm)}`;
+    }
+    
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    
+    setProductsData(response.data);
+  } catch (err) {
+    setProductsError(err.response?.data?.message || 'Failed to fetch products');
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Add product function
+const handleAddProduct = async (e) => {
+  e.preventDefault();
+  try {
+    setLoading(true);
+    
+    // Validate required fields
+    if (!newProduct.Product_ID || !newProduct.Product_Name || !newProduct.Price_Per_Unit || 
+        !newProduct.Availability || !newProduct.Production_Date || !newProduct.Expiration_Date) {
+      throw new Error('Please fill all required fields');
+    }
+
+    // Validate price is a positive number
+    if (isNaN(newProduct.Price_Per_Unit)) {
+      throw new Error('Price must be a number');
+    }
+    if (parseFloat(newProduct.Price_Per_Unit) <= 0) {
+      throw new Error('Price must be greater than 0');
+    }
+
+    // Validate dates
+    if (new Date(newProduct.Production_Date) > new Date(newProduct.Expiration_Date)) {
+      throw new Error('Expiration date must be after production date');
+    }
+
+    const token = localStorage.getItem('employeeToken');
+    if (!token) {
+      throw new Error('Authentication token missing');
+    }
+
+    const response = await axios.post('/api/products', {
+      productId: newProduct.Product_ID,
+      name: newProduct.Product_Name,
+      pricePerUnit: parseFloat(newProduct.Price_Per_Unit),
+      availability: newProduct.Availability,
+      productionDate: newProduct.Production_Date,
+      expirationDate: newProduct.Expiration_Date
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.status !== 201) {
+      throw new Error('Failed to add product');
+    }
+
+    // Reset form and show success
     setNewProduct({
       Product_ID: '',
       Product_Name: '',
@@ -561,7 +635,32 @@ useEffect(() => {
       Production_Date: '',
       Expiration_Date: ''
     });
-  };
+    
+    showAlert('Product added successfully!', 'success');
+    setActiveProductsTab('view');
+    fetchProducts();
+  } catch (err) {
+    let errorMessage = 'Failed to add product';
+    if (err.response) {
+      errorMessage = err.response.data?.message || 
+                    err.response.data?.error || 
+                    err.response.statusText;
+    } else if (err.message) {
+      errorMessage = err.message;
+    }
+    
+    showAlert(errorMessage, 'danger');
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Add this useEffect hook for products
+useEffect(() => {
+  if (activeSection === 'products' && activeProductsTab === 'view') {
+    fetchProducts();
+  }
+}, [activeSection, activeProductsTab, productsSearchTerm]);
 
   const handleAddFinanceRecord = (e) => {
     e.preventDefault();
@@ -1061,7 +1160,7 @@ useEffect(() => {
   </Card>
 );
 
-const renderSales = () => (
+  const renderSales = () => (
   <Card className="p-4 mb-4">
     <div className="d-flex justify-content-between align-items-center mb-4">
       <h2>Sales Management</h2>
@@ -1220,134 +1319,200 @@ const renderSales = () => (
   </Card>
 );
 
-  const renderProducts = () => (
-    <Card className="p-4 mb-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Products Management</h2>
-        <div>
-          <Button 
-            variant={activeProductsTab === 'add' ? 'primary' : 'outline-primary'}
-            className="me-2"
-            onClick={() => setActiveProductsTab('add')}
-          >
-            Add New Product
-          </Button>
-          <Button 
-            variant={activeProductsTab === 'view' ? 'primary' : 'outline-primary'}
-            onClick={() => setActiveProductsTab('view')}
-          >
-            View Products
+const renderProducts = () => (
+  <Card className="p-4 mb-4">
+    <div className="d-flex justify-content-between align-items-center mb-4">
+      <h2>Products Management</h2>
+      <div>
+        <Button 
+          variant={activeProductsTab === 'add' ? 'primary' : 'outline-primary'}
+          className="me-2"
+          onClick={() => setActiveProductsTab('add')}
+        >
+          Add New Product
+        </Button>
+        <Button 
+          variant={activeProductsTab === 'view' ? 'primary' : 'outline-primary'}
+          onClick={() => setActiveProductsTab('view')}
+        >
+          View Products
+        </Button>
+      </div>
+    </div>
+
+    {activeProductsTab === 'add' ? (
+      <Form onSubmit={handleAddProduct}>
+        <div className="row mb-3">
+          <Form.Group className="col-md-6">
+            <Form.Label>Product ID</Form.Label>
+            <Form.Control 
+              type="text" 
+              required
+              placeholder="e.g. PROD001"
+              value={newProduct.Product_ID}
+              onChange={(e) => setNewProduct({...newProduct, Product_ID: e.target.value})}
+            />
+          </Form.Group>
+          <Form.Group className="col-md-6">
+            <Form.Label>Product Name</Form.Label>
+            <Form.Control 
+              type="text" 
+              required
+              placeholder="e.g. Fresh Milk"
+              value={newProduct.Product_Name}
+              onChange={(e) => setNewProduct({...newProduct, Product_Name: e.target.value})}
+            />
+          </Form.Group>
+        </div>
+
+        <div className="row mb-3">
+          <Form.Group className="col-md-6">
+            <Form.Label>Price Per Unit (Rs)</Form.Label>
+            <Form.Control 
+              type="number" 
+              required
+              min="0"
+              step="0.01"
+              placeholder="e.g. 50.00"
+              value={newProduct.Price_Per_Unit}
+              onChange={(e) => setNewProduct({...newProduct, Price_Per_Unit: e.target.value})}
+            />
+          </Form.Group>
+          <Form.Group className="col-md-6">
+            <Form.Label>Availability</Form.Label>
+            <Form.Control 
+              type="text" 
+              required
+              placeholder="e.g. In Stock, Out of Stock"
+              value={newProduct.Availability}
+              onChange={(e) => setNewProduct({...newProduct, Availability: e.target.value})}
+            />
+          </Form.Group>
+        </div>
+
+        <div className="row mb-3">
+          <Form.Group className="col-md-6">
+            <Form.Label>Production Date</Form.Label>
+            <Form.Control 
+              type="date" 
+              required
+              max={new Date().toISOString().split('T')[0]}
+              value={newProduct.Production_Date}
+              onChange={(e) => setNewProduct({...newProduct, Production_Date: e.target.value})}
+            />
+          </Form.Group>
+          <Form.Group className="col-md-6">
+            <Form.Label>Expiration Date</Form.Label>
+            <Form.Control 
+              type="date" 
+              required
+              min={newProduct.Production_Date || new Date().toISOString().split('T')[0]}
+              value={newProduct.Expiration_Date}
+              onChange={(e) => setNewProduct({...newProduct, Expiration_Date: e.target.value})}
+            />
+          </Form.Group>
+        </div>
+
+        <div className="d-flex justify-content-end">
+          <Button variant="primary" type="submit" disabled={loading}>
+            {loading ? (
+              <>
+                <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+                <span className="ms-2">Adding...</span>
+              </>
+            ) : 'Add Product'}
           </Button>
         </div>
-      </div>
+      </Form>
+    ) : (
+      <>
+        <InputGroup className="mb-3">
+          <Form.Control
+            placeholder="Search by Product ID or Name"
+            value={productsSearchTerm}
+            onChange={(e) => setProductsSearchTerm(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && fetchProducts()}
+          />
+          <Button 
+            variant="outline-secondary" 
+            onClick={fetchProducts}
+            disabled={loading}
+          >
+            Search
+          </Button>
+          <Button 
+            variant="outline-danger" 
+            onClick={() => {
+              setProductsSearchTerm('');
+              fetchProducts();
+            }}
+            disabled={loading || !productsSearchTerm}
+          >
+            Clear
+          </Button>
+        </InputGroup>
 
-      {activeProductsTab === 'add' ? (
-        <Form onSubmit={handleAddProduct}>
-          <div className="row mb-3">
-            <Form.Group className="col-md-6">
-              <Form.Label>Product ID</Form.Label>
-              <Form.Control 
-                type="text" 
-                required
-                value={newProduct.Product_ID}
-                onChange={(e) => setNewProduct({...newProduct, Product_ID: e.target.value})}
-              />
-            </Form.Group>
-            <Form.Group className="col-md-6">
-              <Form.Label>Product Name</Form.Label>
-              <Form.Control 
-                type="text" 
-                required
-                value={newProduct.Product_Name}
-                onChange={(e) => setNewProduct({...newProduct, Product_Name: e.target.value})}
-              />
-            </Form.Group>
+        {loading ? (
+          <div className="text-center my-4">
+            <Spinner animation="border" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </Spinner>
           </div>
-
-          <div className="row mb-3">
-            <Form.Group className="col-md-6">
-              <Form.Label>Price Per Unit (Rs)</Form.Label>
-              <Form.Control 
-                type="number" 
-                required
-                value={newProduct.Price_Per_Unit}
-                onChange={(e) => setNewProduct({...newProduct, Price_Per_Unit: e.target.value})}
-              />
-            </Form.Group>
-            <Form.Group className="col-md-6">
-              <Form.Label>Availability</Form.Label>
-              <Form.Control 
-                type="text" 
-                required
-                value={newProduct.Availability}
-                onChange={(e) => setNewProduct({...newProduct, Availability: e.target.value})}
-              />
-            </Form.Group>
+        ) : productsError ? (
+          <Alert variant="danger">{productsError}</Alert>
+        ) : (
+          <div className="table-responsive">
+            <Table striped bordered hover>
+              <thead className="table-dark">
+                <tr>
+                  <th>Product ID</th>
+                  <th>Name</th>
+                  <th>Price (Rs)</th>
+                  <th>Availability</th>
+                  <th>Production Date</th>
+                  <th>Expiration Date</th>
+                  <th>Added By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {productsData.length > 0 ? (
+                  productsData.map((product) => (
+                    <tr key={product._id}>
+                      <td>{product.productId}</td>
+                      <td>{product.name}</td>
+                      <td>{product.pricePerUnit.toFixed(2)}</td>
+                      <td>
+                        <Badge 
+                          bg={product.availability.toLowerCase().includes('out') ? 'danger' : 'success'}
+                        >
+                          {product.availability}
+                        </Badge>
+                      </td>
+                      <td>{new Date(product.productionDate).toLocaleDateString()}</td>
+                      <td>
+                        {new Date(product.expirationDate).toLocaleDateString()}
+                        {new Date(product.expirationDate) < new Date() && (
+                          <Badge bg="warning" text="dark" className="ms-2">Expired</Badge>
+                        )}
+                      </td>
+                      <td>{product.createdBy?.name || 'Unknown'}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="7" className="text-center text-muted py-4">
+                      No products found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
           </div>
-
-          <div className="row mb-3">
-            <Form.Group className="col-md-6">
-              <Form.Label>Production Date</Form.Label>
-              <Form.Control 
-                type="date" 
-                required
-                value={newProduct.Production_Date}
-                onChange={(e) => setNewProduct({...newProduct, Production_Date: e.target.value})}
-              />
-            </Form.Group>
-            <Form.Group className="col-md-6">
-              <Form.Label>Expiration Date</Form.Label>
-              <Form.Control 
-                type="date" 
-                required
-                value={newProduct.Expiration_Date}
-                onChange={(e) => setNewProduct({...newProduct, Expiration_Date: e.target.value})}
-              />
-            </Form.Group>
-          </div>
-
-          <div className="d-flex justify-content-end">
-            <Button variant="primary" type="submit">
-              Add Product
-            </Button>
-          </div>
-        </Form>
-      ) : (
-        <>
-          <InputGroup className="mb-3">
-            <Form.Control
-              placeholder="Search by Product ID"
-              value={productsSearchTerm}
-              onChange={(e) => setProductsSearchTerm(e.target.value)}
-            />
-            <Button variant="outline-secondary">
-              Search
-            </Button>
-          </InputGroup>
-
-          <Table striped bordered hover responsive>
-            <thead>
-              <tr>
-                <th>Product ID</th>
-                <th>Name</th>
-                <th>Price (Rs)</th>
-                <th>Availability</th>
-                <th>Production Date</th>
-                <th>Expiration Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colSpan="6" className="text-center text-muted">
-                  No product records found (backend will load data here)
-                </td>
-              </tr>
-            </tbody>
-          </Table>
-        </>
-      )}
-    </Card>
-  );
+        )}
+      </>
+    )}
+  </Card>
+);
 
   const renderFarmFinance = () => (
     <Card className="p-4 mb-4">

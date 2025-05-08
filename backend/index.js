@@ -30,7 +30,7 @@ const healthRoutes = require('./routes/healthRoutes');
 const salesRoutes = require('./routes/salesRoutes');
 const productRoutes = require('./routes/productRoutes');
 const financeRoutes = require('./routes/financeRoutes');
-const orderRoutes = require('./routes/orderRoutes');
+//const orderRoutes = require('./routes/orderRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 
 // Mount routers
@@ -42,7 +42,7 @@ app.use('/api/health', healthRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/finance', financeRoutes);
-app.use('/api/orders', orderRoutes);
+//app.use('/api/orders', orderRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
 // Error handler middleware

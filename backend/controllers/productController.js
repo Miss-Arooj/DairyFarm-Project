@@ -2,7 +2,7 @@ const Product = require('../models/Product');
 const Employee = require('../models/Employee');
 
 // Add new product
-exports.addProduct = async (req, res) => {
+const addProduct = async (req, res) => {
   try {
     const { productId, name, pricePerUnit, availability, productionDate, expirationDate } = req.body;
     
@@ -30,7 +30,7 @@ exports.addProduct = async (req, res) => {
       availability,
       productionDate,
       expirationDate,
-      createdBy: req.employee.id
+      createdBy: req.employee._id // Changed from req.employee.id to req.employee._id
     });
 
     await product.save();
@@ -40,13 +40,16 @@ exports.addProduct = async (req, res) => {
       product
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error adding product:', error);
+    res.status(500).json({ 
+      message: 'Server error',
+      error: error.message 
+    });
   }
 };
 
 // Get all products
-exports.getProducts = async (req, res) => {
+const getProducts = async (req, res) => {
   try {
     const { search } = req.query;
     
@@ -67,7 +70,7 @@ exports.getProducts = async (req, res) => {
 };
 
 // Get product by ID
-exports.getProductById = async (req, res) => {
+const getProductById = async (req, res) => {
   try {
     const product = await Product.findOne({ productId: req.params.id })
       .populate('createdBy', 'name');
@@ -78,7 +81,17 @@ exports.getProductById = async (req, res) => {
 
     res.json(product);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error adding product:', error);
+    console.error('Request body:', req.body);
+    res.status(500).json({ 
+      message: 'Server error',
+      error: error.message // Send the actual error message to frontend
+    });
   }
+};
+
+module.exports = {
+  addProduct,
+  getProducts,
+  getProductById
 };

@@ -8,6 +8,28 @@ import ListGroup from 'react-bootstrap/ListGroup';
 import Card from 'react-bootstrap/Card';
 import InputGroup from 'react-bootstrap/InputGroup';
 import axios from 'axios';
+import { Bar, Line } from 'react-chartjs-2';
+import { Chart as ChartJS, 
+         CategoryScale, 
+         LinearScale, 
+         BarElement, 
+         LineElement, 
+         PointElement, 
+         Title, 
+         Tooltip, 
+         Legend } from 'chart.js';
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const ManagerDashboard = () => {
   const [activeSection, setActiveSection] = useState('employees');
@@ -29,16 +51,23 @@ const ManagerDashboard = () => {
   const [activeMilkTab, setActiveMilkTab] = useState('daily');
   const [milkData, setMilkData] = useState([]);
   const [milkSearchTerm, setMilkSearchTerm] = useState('');
+  // Stats declarations
+  const [milkStats, setMilkStats] = useState([]);
+  const [loadingMilkStats, setLoadingMilkStats] = useState(false);
 
   // Sales State
   const [activeSalesTab, setActiveSalesTab] = useState('records');
   const [salesData, setSalesData] = useState([]);
   const [salesSearchTerm, setSalesSearchTerm] = useState('');
+  const [salesStats, setSalesStats] = useState([]);
+  const [loadingSalesStats, setLoadingSalesStats] = useState(false);
 
   // Finance State
   const [activeFinanceTab, setActiveFinanceTab] = useState('expense');
   const [financeData, setFinanceData] = useState([]);
   const [financeSearchTerm, setFinanceSearchTerm] = useState('');
+  const [financeStats, setFinanceStats] = useState([]);
+  const [loadingFinanceStats, setLoadingFinanceStats] = useState(false);
 
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
 
@@ -47,10 +76,16 @@ const ManagerDashboard = () => {
       fetchEmployees();
     } else if (activeSection === 'milk' && activeMilkTab === 'daily') {
       fetchMilkRecords();
-    } else if (activeSection === 'sales' && activeSalesTab === 'records') {
+    } else if (activeSection === 'milk' && activeMilkTab === 'stats') {
+      fetchMilkStats();
+    }  else if (activeSection === 'sales' && activeSalesTab === 'records') {
       fetchSalesRecords();
+    } else if (activeSection === 'sales' && activeSalesTab === 'stats') {
+      fetchSalesStats();
     } else if (activeSection === 'finance' && activeFinanceTab === 'expense') {
       fetchFinanceRecords();
+    } else if (activeSection === 'finance' && activeFinanceTab === 'stats') {
+      fetchFinanceStats();
     }
   }, [activeSection, activeEmpTab, activeMilkTab, activeSalesTab, activeFinanceTab]);
 
@@ -82,6 +117,23 @@ const ManagerDashboard = () => {
     }
   };
 
+  const fetchMilkStats = async () => {
+    setLoadingMilkStats(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:5000/api/milk/stats', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setMilkStats(response.data);
+    } catch (err) {
+      showAlert(err.response?.data?.message || 'Failed to load milk statistics', 'danger');
+    } finally {
+      setLoadingMilkStats(false);
+    }
+  };
+
   const fetchSalesRecords = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -93,6 +145,40 @@ const ManagerDashboard = () => {
       setSalesData(response.data);
     } catch (err) {
       showAlert(err.response?.data?.message || 'Failed to load sales records', 'danger');
+    }
+  };
+
+  const fetchSalesStats = async () => {
+    setLoadingSalesStats(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:5000/api/sales/stats', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setSalesStats(response.data);
+    } catch (err) {
+      showAlert(err.response?.data?.message || 'Failed to load sales statistics', 'danger');
+    } finally {
+      setLoadingSalesStats(false);
+    }
+  };
+
+  const fetchFinanceStats = async () => {
+    setLoadingFinanceStats(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:5000/api/finance/stats', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setFinanceStats(response.data);
+    } catch (err) {
+      showAlert(err.response?.data?.message || 'Failed to load finance statistics', 'danger');
+    } finally {
+      setLoadingFinanceStats(false);
     }
   };
 
@@ -342,7 +428,7 @@ const ManagerDashboard = () => {
           </Button>
         </div>
       </div>
-
+  
       {activeMilkTab === 'daily' ? (
         <>
           <InputGroup className="mb-3">
@@ -355,7 +441,7 @@ const ManagerDashboard = () => {
               Search
             </Button>
           </InputGroup>
-
+  
           <Table striped bordered hover responsive>
             <thead>
               <tr>
@@ -369,7 +455,7 @@ const ManagerDashboard = () => {
               {filteredMilkData.length > 0 ? (
                 filteredMilkData.map((record, index) => (
                   <tr key={index}>
-                    <td>{record.date}</td>
+                    <td>{new Date(record.productionDate).toLocaleDateString()}</td>
                     <td>{record.animalId}</td>
                     <td>{record.quantity}</td>
                     <td>{record.quality}</td>
@@ -386,156 +472,671 @@ const ManagerDashboard = () => {
           </Table>
         </>
       ) : (
-        <div className="alert alert-info text-center py-4">
-          Milk production statistics will be implemented in the next phase.
-        </div>
-      )}
-    </Card>
-  );
-
-  const renderSalesSection = () => (
-    <Card className="p-4 mb-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Sales Management</h2>
-        <div>
-          <Button
-            variant={activeSalesTab === 'records' ? 'primary' : 'outline-primary'}
-            className="me-2"
-            onClick={() => setActiveSalesTab('records')}
-          >
-            Sales Records
-          </Button>
-          <Button
-            variant={activeSalesTab === 'stats' ? 'primary' : 'outline-primary'}
-            onClick={() => setActiveSalesTab('stats')}
-          >
-            Sales Statistics
-          </Button>
+        <>
+          {loadingMilkStats ? (
+      <div className="text-center py-4">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
         </div>
       </div>
-
-      {activeSalesTab === 'records' ? (
-        <>
-          <InputGroup className="mb-3">
-            <Form.Control
-              placeholder="Search by Sales ID or Customer Name"
-              value={salesSearchTerm}
-              onChange={(e) => setSalesSearchTerm(e.target.value)}
+    ) : (
+      <>
+        <h4 className="mb-3">Daily Production Statistics (Last 30 Days)</h4>
+        
+        {/* Quantity Chart */}
+        <div className="mb-4">
+          <h5>Daily Milk Production (KG)</h5>
+          <div style={{ height: '300px' }}>
+            <Bar
+              data={{
+                labels: milkStats.map(stat => stat._id),
+                datasets: [{
+                  label: 'Quantity (KG)',
+                  data: milkStats.map(stat => stat.totalQuantity),
+                  backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                  borderColor: 'rgba(54, 162, 235, 1)',
+                  borderWidth: 1
+                }]
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    title: {
+                      display: true,
+                      text: 'Kilograms (KG)'
+                    }
+                  },
+                  x: {
+                    title: {
+                      display: true,
+                      text: 'Date'
+                    }
+                  }
+                }
+              }}
             />
-            <Button variant="outline-secondary">
-              Search
-            </Button>
-          </InputGroup>
+          </div>
+        </div>
 
+        {/* Quality Trend Chart */}
+        <div className="mb-4">
+          <h5>Quality Trend</h5>
+          <div style={{ height: '300px' }}>
+            <Line
+              data={{
+                labels: milkStats.map(stat => stat._id),
+                datasets: [{
+                  label: 'Quality Score',
+                  data: milkStats.map(stat => stat.avgQuality),
+                  borderColor: 'rgba(75, 192, 192, 1)',
+                  backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                  tension: 0.3,
+                  fill: true
+                }]
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                  y: {
+                    min: 0,
+                    max: 4,
+                    ticks: {
+                      stepSize: 1,
+                      callback: function(value) {
+                        const ratings = ['', 'Poor', 'Average', 'Good', 'Excellent'];
+                        return ratings[value] || '';
+                      }
+                    },
+                    title: {
+                      display: true,
+                      text: 'Quality Rating'
+                    }
+                  },
+                  x: {
+                    title: {
+                      display: true,
+                      text: 'Date'
+                    }
+                  }
+                }
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="mt-4">
+          <h5>Summary of Last 30 Days</h5>
+          <div className="row">
+            <div className="col-md-4">
+              <Card className="text-center">
+                <Card.Body>
+                  <Card.Title>Total Production</Card.Title>
+                  <Card.Text className="fs-3">
+                    {milkStats.reduce((sum, stat) => sum + stat.totalQuantity, 0).toFixed(2)} KG
+                  </Card.Text>
+                </Card.Body>
+              </Card>
+            </div>
+            <div className="col-md-4">
+              <Card className="text-center">
+                <Card.Body>
+                  <Card.Title>Average Daily</Card.Title>
+                  <Card.Text className="fs-3">
+                    {(milkStats.reduce((sum, stat) => sum + stat.totalQuantity, 0) / milkStats.length).toFixed(2)} KG
+                  </Card.Text>
+                </Card.Body>
+              </Card>
+            </div>
+            <div className="col-md-4">
+              <Card className="text-center">
+                <Card.Body>
+                  <Card.Title>Average Quality</Card.Title>
+                  <Card.Text>
+                    <span className={`badge ${
+                      milkStats.reduce((sum, stat) => sum + stat.avgQuality, 0) / milkStats.length >= 3.5 ? 'bg-success' :
+                      milkStats.reduce((sum, stat) => sum + stat.avgQuality, 0) / milkStats.length >= 2.5 ? 'bg-primary' :
+                      milkStats.reduce((sum, stat) => sum + stat.avgQuality, 0) / milkStats.length >= 1.5 ? 'bg-warning' : 'bg-danger'
+                    } fs-6`}>
+                      {milkStats.reduce((sum, stat) => sum + stat.avgQuality, 0) / milkStats.length >= 3.5 ? 'Excellent' :
+                        milkStats.reduce((sum, stat) => sum + stat.avgQuality, 0) / milkStats.length >= 2.5 ? 'Good' :
+                        milkStats.reduce((sum, stat) => sum + stat.avgQuality, 0) / milkStats.length >= 1.5 ? 'Average' : 'Poor'
+                      }
+                    </span>
+                  </Card.Text>
+                </Card.Body>
+              </Card>
+            </div>
+          </div>
+        </div>
+
+        {/* Detailed Table */}
+        <div className="mt-4">
+          <h5>Detailed Statistics</h5>
           <Table striped bordered hover responsive>
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Sales ID</th>
-                <th>Customer Name</th>
-                <th>Product ID</th>
-                <th>Amount (Rs)</th>
+                <th>Total Quantity (KG)</th>
+                <th>Records Count</th>
+                <th>Average Quality</th>
               </tr>
             </thead>
             <tbody>
-              {filteredSalesData.length > 0 ? (
-                filteredSalesData.map((sale, index) => (
-                  <tr key={index}>
-                    <td>{sale.date}</td>
-                    <td>{sale.salesId}</td>
-                    <td>{sale.customerName}</td>
-                    <td>{sale.productId}</td>
-                    <td>{sale.amount}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="5" className="text-center text-muted">
-                    No sales records found
+              {milkStats.map((stat) => (
+                <tr key={stat._id}>
+                  <td>{stat._id}</td>
+                  <td>{stat.totalQuantity.toFixed(2)}</td>
+                  <td>{stat.count}</td>
+                  <td>
+                    <span className={`badge ${
+                      stat.qualityRating === 'Excellent' ? 'bg-success' :
+                      stat.qualityRating === 'Good' ? 'bg-primary' :
+                      stat.qualityRating === 'Average' ? 'bg-warning' : 'bg-danger'
+                    }`}>
+                      {stat.qualityRating}
+                    </span>
                   </td>
                 </tr>
-              )}
+              ))}
             </tbody>
           </Table>
-        </>
-      ) : (
-        <div className="alert alert-info text-center py-4">
-          Sales statistics will be implemented in the next phase.
         </div>
+      </>
+    )}
+  </>
       )}
     </Card>
   );
 
-  const renderFinanceSection = () => (
-    <Card className="p-4 mb-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Finance Records</h2>
-        <div>
-          <Button
-            variant={activeFinanceTab === 'expense' ? 'primary' : 'outline-primary'}
-            className="me-2"
-            onClick={() => setActiveFinanceTab('expense')}
-          >
-            Expense/Revenue
-          </Button>
-          <Button
-            variant={activeFinanceTab === 'stats' ? 'primary' : 'outline-primary'}
-            onClick={() => setActiveFinanceTab('stats')}
-          >
-            Income Stats
-          </Button>
-        </div>
-      </div>
-
-      {activeFinanceTab === 'expense' ? (
-        <>
-          <InputGroup className="mb-3">
-            <Form.Control
-              placeholder="Search by Date or Description"
-              value={financeSearchTerm}
-              onChange={(e) => setFinanceSearchTerm(e.target.value)}
-            />
-            <Button variant="outline-secondary">
-              Search
+  const renderSalesSection = () => {
+    // Filter sales data based on search term
+    const filteredSalesData = salesData.filter(item =>
+      item.saleId?.toString().includes(salesSearchTerm) ||
+      item.customerName?.toLowerCase().includes(salesSearchTerm.toLowerCase())
+    );
+  
+    return (
+      <Card className="p-4 mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h2>Sales Management</h2>
+          <div>
+            <Button
+              variant={activeSalesTab === 'records' ? 'primary' : 'outline-primary'}
+              className="me-2"
+              onClick={() => setActiveSalesTab('records')}
+            >
+              Sales Records
             </Button>
-          </InputGroup>
-
-          <Table striped bordered hover responsive>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Description</th>
-                <th>Amount (Rs)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredFinanceData.length > 0 ? (
-                filteredFinanceData.map((record, index) => (
-                  <tr key={index}>
-                    <td>{record.date}</td>
-                    <td>{record.type}</td>
-                    <td>{record.description}</td>
-                    <td>{record.amount}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="4" className="text-center text-muted">
-                    No finance records found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </Table>
-        </>
-      ) : (
-        <div className="alert alert-info text-center py-4">
-          Income statistics will be implemented in the next phase.
+            <Button
+              variant={activeSalesTab === 'stats' ? 'primary' : 'outline-primary'}
+              onClick={() => setActiveSalesTab('stats')}
+            >
+              Sales Statistics
+            </Button>
+          </div>
         </div>
-      )}
-    </Card>
-  );
+  
+        {activeSalesTab === 'records' ? (
+          <>
+            <InputGroup className="mb-3">
+              <Form.Control
+                placeholder="Search by Sales ID or Customer Name"
+                value={salesSearchTerm}
+                onChange={(e) => setSalesSearchTerm(e.target.value)}
+              />
+              <Button variant="outline-secondary">
+                Search
+              </Button>
+            </InputGroup>
+  
+            <Table striped bordered hover responsive>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Sales ID</th>
+                  <th>Customer Name</th>
+                  <th>Product ID</th>
+                  <th>Amount (Rs)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredSalesData.length > 0 ? (
+                  filteredSalesData.map((sale) => (
+                    <tr key={sale._id}>
+                      <td>{new Date(sale.saleDate).toLocaleDateString()}</td>
+                      <td>{sale.saleId}</td>
+                      <td>{sale.customerName}</td>
+                      <td>{sale.productId}</td>
+                      <td>{sale.totalCost.toFixed(2)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="text-center text-muted">
+                      No sales records found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
+          </>
+        ) : (
+          <>
+            {loadingSalesStats ? (
+              <div className="text-center py-4">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h4 className="mb-3">Daily Sales Statistics (Last 30 Days)</h4>
+                
+                {/* Revenue Chart */}
+                <div className="mb-4">
+                  <h5>Daily Sales Revenue</h5>
+                  <div style={{ height: '300px' }}>
+                    <Bar
+                      data={{
+                        labels: salesStats.map(stat => stat._id),
+                        datasets: [{
+                          label: 'Revenue (Rs)',
+                          data: salesStats.map(stat => stat.totalSales),
+                          backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                          borderColor: 'rgba(75, 192, 192, 1)',
+                          borderWidth: 1
+                        }]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            title: {
+                              display: true,
+                              text: 'Rupees (Rs)'
+                            }
+                          },
+                          x: {
+                            title: {
+                              display: true,
+                              text: 'Date'
+                            }
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+  
+                {/* Transactions Chart */}
+                <div className="mb-4">
+                  <h5>Daily Transactions</h5>
+                  <div style={{ height: '300px' }}>
+                    <Line
+                      data={{
+                        labels: salesStats.map(stat => stat._id),
+                        datasets: [{
+                          label: 'Number of Sales',
+                          data: salesStats.map(stat => stat.count),
+                          borderColor: 'rgba(153, 102, 255, 1)',
+                          backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                          tension: 0.3,
+                          fill: true
+                        }]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            title: {
+                              display: true,
+                              text: 'Number of Sales'
+                            }
+                          },
+                          x: {
+                            title: {
+                              display: true,
+                              text: 'Date'
+                            }
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+  
+                {/* Summary Cards */}
+                <div className="mt-4">
+                  <h5>Summary of Last 30 Days</h5>
+                  <div className="row">
+                    <div className="col-md-4">
+                      <Card className="text-center">
+                        <Card.Body>
+                          <Card.Title>Total Revenue</Card.Title>
+                          <Card.Text className="fs-3">
+                            Rs {salesStats.reduce((sum, stat) => sum + stat.totalSales, 0).toFixed(2)}
+                          </Card.Text>
+                        </Card.Body>
+                      </Card>
+                    </div>
+                    <div className="col-md-4">
+                      <Card className="text-center">
+                        <Card.Body>
+                          <Card.Title>Total Transactions</Card.Title>
+                          <Card.Text className="fs-3">
+                            {salesStats.reduce((sum, stat) => sum + stat.count, 0)}
+                          </Card.Text>
+                        </Card.Body>
+                      </Card>
+                    </div>
+                    <div className="col-md-4">
+                      <Card className="text-center">
+                        <Card.Body>
+                          <Card.Title>Avg Daily Revenue</Card.Title>
+                          <Card.Text className="fs-3">
+                            Rs {(salesStats.reduce((sum, stat) => sum + stat.totalSales, 0) / salesStats.length).toFixed(2)}
+                          </Card.Text>
+                        </Card.Body>
+                      </Card>
+                    </div>
+                  </div>
+                </div>
+  
+                {/* Product Distribution */}
+                {salesStats.length > 0 && (
+                  <div className="mt-4">
+                    <h5>Product Distribution</h5>
+                    <Table striped bordered hover responsive>
+                      <thead>
+                        <tr>
+                          <th>Product ID</th>
+                          <th>Days Sold</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Array.from(new Set(salesStats.flatMap(stat => stat.productsSold))).map(productId => (
+                          <tr key={productId}>
+                            <td>{productId}</td>
+                            <td>
+                              {salesStats.filter(stat => stat.productsSold.includes(productId)).length} days
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </Card>
+    );
+  };
+
+  const renderFinanceSection = () => {
+    // Process finance data to separate revenue and expense records
+    const processedFinanceData = financeData.flatMap(record => [
+      ...(record.totalRevenue > 0 ? [{
+        ...record,
+        type: 'Revenue',
+        amount: record.totalRevenue,
+        date: record.date
+      }] : []),
+      ...(record.totalExpense > 0 ? [{
+        ...record,
+        type: 'Expense',
+        amount: record.totalExpense,
+        date: record.date
+      }] : [])
+    ]);
+  
+    // Filter finance data based on search term
+    const filteredFinanceData = processedFinanceData.filter(item =>
+      new Date(item.date).toLocaleDateString().includes(financeSearchTerm) ||
+      item.type.toLowerCase().includes(financeSearchTerm.toLowerCase())
+    );
+  
+    return (
+      <Card className="p-4 mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h2>Finance Records</h2>
+          <div>
+            <Button
+              variant={activeFinanceTab === 'expense' ? 'primary' : 'outline-primary'}
+              className="me-2"
+              onClick={() => setActiveFinanceTab('expense')}
+            >
+              Financial Records
+            </Button>
+            <Button
+              variant={activeFinanceTab === 'stats' ? 'primary' : 'outline-primary'}
+              onClick={() => setActiveFinanceTab('stats')}
+            >
+              Income Stats
+            </Button>
+          </div>
+        </div>
+  
+        {activeFinanceTab === 'expense' ? (
+          <>
+            <InputGroup className="mb-3">
+              <Form.Control
+                placeholder="Search by Date or Type (Revenue/Expense)"
+                value={financeSearchTerm}
+                onChange={(e) => setFinanceSearchTerm(e.target.value)}
+              />
+              <Button variant="outline-secondary">
+                Search
+              </Button>
+            </InputGroup>
+  
+            <Table striped bordered hover responsive>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Amount (Rs)</th>
+                  <th>Recorded By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredFinanceData.length > 0 ? (
+                  filteredFinanceData.map((record) => (
+                    <tr key={`${record._id}-${record.type}`}>
+                      <td>{new Date(record.date).toLocaleDateString()}</td>
+                      <td>{record.type}</td>
+                      <td>{record.amount.toFixed(2)}</td>
+                      <td>{record.recordedBy?.name || record.recordedBy?.employeeId || 'N/A'}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="4" className="text-center text-muted">
+                      No finance records found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
+          </>
+        ) : (
+          <>
+            {loadingFinanceStats ? (
+              <div className="text-center py-4">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h4 className="mb-3">Monthly Financial Statistics</h4>
+                
+                {/* Revenue vs Expense Chart */}
+                <div className="mb-4">
+                  <h5>Revenue vs Expenses</h5>
+                  <div style={{ height: '300px' }}>
+                    <Bar
+                      data={{
+                        labels: financeStats.map(stat => stat._id),
+                        datasets: [
+                          {
+                            label: 'Revenue (Rs)',
+                            data: financeStats.map(stat => stat.totalRevenue),
+                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                          },
+                          {
+                            label: 'Expenses (Rs)',
+                            data: financeStats.map(stat => stat.totalExpense),
+                            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                          }
+                        ]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            title: {
+                              display: true,
+                              text: 'Rupees (Rs)'
+                            }
+                          },
+                          x: {
+                            title: {
+                              display: true,
+                              text: 'Month'
+                            }
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+  
+                {/* Profit Trend Chart */}
+                <div className="mb-4">
+                  <h5>Profit Trend</h5>
+                  <div style={{ height: '300px' }}>
+                    <Line
+                      data={{
+                        labels: financeStats.map(stat => stat._id),
+                        datasets: [{
+                          label: 'Profit (Rs)',
+                          data: financeStats.map(stat => stat.totalRevenue - stat.totalExpense),
+                          borderColor: 'rgba(54, 162, 235, 1)',
+                          backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                          tension: 0.3,
+                          fill: true
+                        }]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                          y: {
+                            beginAtZero: false,
+                            title: {
+                              display: true,
+                              text: 'Profit (Rs)'
+                            }
+                          },
+                          x: {
+                            title: {
+                              display: true,
+                              text: 'Month'
+                            }
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+  
+                {/* Summary Cards */}
+                <div className="mt-4">
+                  <h5>Financial Summary</h5>
+                  <div className="row">
+                    <div className="col-md-4">
+                      <Card className="text-center">
+                        <Card.Body>
+                          <Card.Title>Total Revenue</Card.Title>
+                          <Card.Text className="fs-3">
+                            Rs {financeStats.reduce((sum, stat) => sum + stat.totalRevenue, 0).toFixed(2)}
+                          </Card.Text>
+                        </Card.Body>
+                      </Card>
+                    </div>
+                    <div className="col-md-4">
+                      <Card className="text-center">
+                        <Card.Body>
+                          <Card.Title>Total Expenses</Card.Title>
+                          <Card.Text className="fs-3">
+                            Rs {financeStats.reduce((sum, stat) => sum + stat.totalExpense, 0).toFixed(2)}
+                          </Card.Text>
+                        </Card.Body>
+                      </Card>
+                    </div>
+                    <div className="col-md-4">
+                      <Card className="text-center">
+                        <Card.Body>
+                          <Card.Title>Net Profit</Card.Title>
+                          <Card.Text className="fs-3">
+                            Rs {(financeStats.reduce((sum, stat) => sum + stat.totalRevenue - stat.totalExpense, 0)).toFixed(2)}
+                          </Card.Text>
+                        </Card.Body>
+                      </Card>
+                    </div>
+                  </div>
+                </div>
+  
+                {/* Detailed Table */}
+                <div className="mt-4">
+                  <h5>Detailed Statistics</h5>
+                  <Table striped bordered hover responsive>
+                    <thead>
+                      <tr>
+                        <th>Month</th>
+                        <th>Revenue (Rs)</th>
+                        <th>Expenses (Rs)</th>
+                        <th>Profit (Rs)</th>
+                        <th>Records</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {financeStats.map((stat) => (
+                        <tr key={stat._id}>
+                          <td>{stat._id}</td>
+                          <td>{stat.totalRevenue.toFixed(2)}</td>
+                          <td>{stat.totalExpense.toFixed(2)}</td>
+                          <td>{(stat.totalRevenue - stat.totalExpense).toFixed(2)}</td>
+                          <td>{stat.count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </Card>
+    );
+  };
 
   const renderActiveSection = () => {
     switch (activeSection) {

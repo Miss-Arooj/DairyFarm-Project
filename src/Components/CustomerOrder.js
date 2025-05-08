@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Card,
@@ -9,7 +9,8 @@ import {
   Row,
   Col,
   InputGroup,
-  Container
+  Container,
+  Spinner
 } from 'react-bootstrap';
 import axios from 'axios';
 
@@ -23,13 +24,41 @@ const CustomerOrder = () => {
     address: ''
   });
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [productsError, setProductsError] = useState(null);
 
-  const products = [
-    { id: 1, name: 'Butter', description: 'Fresh & Natural', price: 70, unit: 'per kg' },
-    { id: 2, name: 'Milk', description: 'Fresh & Natural', price: 70, unit: 'per litre' },
-    { id: 3, name: 'Cheese', description: 'Fresh & Natural', price: 100, unit: 'per kg' },
-    { id: 4, name: 'Yogurt', description: 'Fresh & Natural', price: 60, unit: 'per kg' }
-  ];
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      setProductsError(null);
+      const token = localStorage.getItem('token'); // Using customer token instead of employeeToken
+      
+      const response = await axios.get('/api/products', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      setProducts(response.data.map(product => ({
+        id: product.productId,
+        name: product.name,
+        description: `Available: ${product.availability}`,
+        price: product.pricePerUnit,
+        unit: 'per unit'
+      })));
+    } catch (err) {
+      setProductsError(err.response?.data?.message || 'Failed to fetch products');
+      showAlert('Failed to load products', 'danger');
+      console.error('Error fetching products:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   const showAlert = (message, variant) => {
     setAlert({ show: true, message, variant });
@@ -73,7 +102,7 @@ const CustomerOrder = () => {
     setCustomerInfo({ ...customerInfo, [name]: value });
   };
 
-  const handleCompleteOrder = async (e) => {
+  const handleCompleteOrder = (e) => {
     e.preventDefault();
     if (cart.length === 0) {
       showAlert('Your cart is empty', 'danger');
@@ -83,45 +112,62 @@ const CustomerOrder = () => {
       showAlert('Please fill all customer information', 'danger');
       return;
     }
-
-    try {
-      const orderData = { customerInfo, cart, total: calculateTotal() };
-      await axios.post('http://localhost:5000/api/orders', orderData);
-      
-      setOrderComplete(true);
-      setCart([]);
-      showAlert('Order completed successfully!', 'success');
-    } catch (err) {
-      showAlert('Order failed. Please try again.', 'danger');
-    }
+    console.log('Order completed:', { customerInfo, cart, total: calculateTotal() });
+    setOrderComplete(true);
+    setCart([]);
+    showAlert('Order completed successfully!', 'success');
   };
 
-  const renderProducts = () => (
-    <Row xs={1} md={2} lg={3} className="g-4">
-      {products.map(product => (
-        <Col key={product.id}>
-          <Card className="h-100">
-            <Card.Body>
-              <Card.Title>{product.name}</Card.Title>
-              <Card.Subtitle className="mb-2 text-muted">{product.description}</Card.Subtitle>
-              <div className="mb-2 fw-bold">
-                Rs. {product.price} {product.unit}
-              </div>
-            </Card.Body>
-            <Card.Footer className="bg-transparent border-top-0">
-              <Button
-                variant="primary"
-                onClick={() => addToCart(product)}
-                className="w-100"
-              >
-                Add To Cart
-              </Button>
-            </Card.Footer>
-          </Card>
-        </Col>
-      ))}
-    </Row>
-  );
+  const renderProducts = () => {
+    if (loading) {
+      return (
+        <div className="text-center py-5">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading products...</span>
+          </Spinner>
+        </div>
+      );
+    }
+
+    if (productsError) {
+      return (
+        <Alert variant="danger" className="text-center py-4">
+          <Alert.Heading>Error Loading Products</Alert.Heading>
+          <p>{productsError}</p>
+          <Button variant="outline-danger" onClick={fetchProducts}>
+            Retry
+          </Button>
+        </Alert>
+      );
+    }
+
+    return (
+      <Row xs={1} md={2} lg={3} className="g-4">
+        {products.map(product => (
+          <Col key={product.id}>
+            <Card className="h-100">
+              <Card.Body>
+                <Card.Title>{product.name}</Card.Title>
+                <Card.Subtitle className="mb-2 text-muted">{product.description}</Card.Subtitle>
+                <div className="mb-2 fw-bold">
+                  Rs. {product.price} {product.unit}
+                </div>
+              </Card.Body>
+              <Card.Footer className="bg-transparent border-top-0">
+                <Button
+                  variant="primary"
+                  onClick={() => addToCart(product)}
+                  className="w-100"
+                >
+                  Add To Cart
+                </Button>
+              </Card.Footer>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+    );
+  };
 
   const renderCart = () => (
     <div>

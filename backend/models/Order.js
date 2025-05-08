@@ -1,7 +1,12 @@
 const mongoose = require('mongoose');
 
 const OrderSchema = new mongoose.Schema({
-  customerInfo: {
+  orderId: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  customer: {
     name: {
       type: String,
       required: true
@@ -24,11 +29,11 @@ const OrderSchema = new mongoose.Schema({
       type: String,
       required: true
     },
-    quantity: {
+    price: {
       type: Number,
       required: true
     },
-    price: {
+    quantity: {
       type: Number,
       required: true
     }
@@ -42,15 +47,22 @@ const OrderSchema = new mongoose.Schema({
     enum: ['pending', 'processing', 'completed', 'cancelled'],
     default: 'pending'
   },
-  manager: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+  createdAt: {
+    type: Date,
+    default: Date.now
   },
-  date: {
+  updatedAt: {
     type: Date,
     default: Date.now
   }
+});
+
+// Generate order ID before saving
+OrderSchema.pre('save', function(next) {
+  if (!this.orderId) {
+    this.orderId = 'ORD-' + Date.now().toString().slice(-8);
+  }
+  next();
 });
 
 module.exports = mongoose.model('Order', OrderSchema);

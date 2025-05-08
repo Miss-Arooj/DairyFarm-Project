@@ -38,9 +38,5 @@ const MilkProductionSchema = new mongoose.Schema({
   }, {
     timestamps: true
   });
-  
-  // Add index for better performance on frequent queries
-  MilkProductionSchema.index({ productionDate: -1 });
-  MilkProductionSchema.index({ animalId: 1 });
 
 module.exports = mongoose.model('MilkProduction', MilkProductionSchema);

@@ -15,7 +15,13 @@ const FinanceSchema = new mongoose.Schema({
   },
   recordedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'Employee',
+    required: true
+  },
+  manager: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
   dateRecorded: {
     type: Date,

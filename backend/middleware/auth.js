@@ -3,6 +3,7 @@ const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
 const Employee = require('../models/Employee');
 
+// General protection middleware (for both employees and managers)
 const protect = asyncHandler(async (req, res, next) => {
   let token;
 
@@ -46,6 +47,7 @@ const protect = asyncHandler(async (req, res, next) => {
   }
 });
 
+// Manager-only middleware
 const managerOnly = (req, res, next) => {
   if (req.user && req.user.role === 'manager') {
     next();
@@ -55,4 +57,19 @@ const managerOnly = (req, res, next) => {
   }
 };
 
-module.exports = { protect, managerOnly };
+// Employee-only middleware
+const employeeOnly = (req, res, next) => {
+  if (req.user && req.user.role === 'employee') {
+    req.employee = req.user; // Alias as req.employee for clarity in employee routes
+    next();
+  } else {
+    res.status(403);
+    throw new Error('Not authorized as employee');
+  }
+};
+
+module.exports = { 
+  protect, 
+  managerOnly,
+  employeeOnly 
+};

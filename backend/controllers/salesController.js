@@ -61,7 +61,25 @@ const getSales = asyncHandler(async (req, res) => {
   res.json(sales);
 });
 
+const getSalesStats = asyncHandler(async (req, res) => {
+  const stats = await Sale.aggregate([
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$saleDate" } },
+        totalSales: { $sum: "$totalCost" },
+        count: { $sum: 1 },
+        productsSold: { $addToSet: "$productId" }
+      }
+    },
+    { $sort: { _id: -1 } },
+    { $limit: 30 }
+  ]);
+
+  res.json(stats);
+});
+
 module.exports = {
   addSale,
-  getSales
+  getSales,
+  getSalesStats
 };

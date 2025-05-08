@@ -608,16 +608,24 @@ const handleAddProduct = async (e) => {
       throw new Error('Authentication token missing');
     }
 
+    if (isNaN(newProduct.Price_Per_Unit) || parseFloat(newProduct.Price_Per_Unit) <= 0) {
+      return showAlert('Price must be a positive number', 'danger');
+    }
+    
+    if (new Date(newProduct.Production_Date) > new Date(newProduct.Expiration_Date)) {
+      return showAlert('Expiration date must be after production date', 'danger');
+    }
+
     const response = await axios.post('/api/products', {
       productId: newProduct.Product_ID,
       name: newProduct.Product_Name,
       pricePerUnit: parseFloat(newProduct.Price_Per_Unit),
       availability: newProduct.Availability,
-      productionDate: newProduct.Production_Date,
-      expirationDate: newProduct.Expiration_Date
+      productionDate: new Date(newProduct.Production_Date).toISOString(),
+      expirationDate: new Date(newProduct.Expiration_Date).toISOString()
     }, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
@@ -642,13 +650,13 @@ const handleAddProduct = async (e) => {
   } catch (err) {
     let errorMessage = 'Failed to add product';
     if (err.response) {
-      errorMessage = err.response.data?.message || 
-                    err.response.data?.error || 
+      console.error('Full error response:', err.response);
+      errorMessage = err.response.data?.error || 
+                    err.response.data?.message || 
                     err.response.statusText;
     } else if (err.message) {
       errorMessage = err.message;
     }
-    
     showAlert(errorMessage, 'danger');
   } finally {
     setLoading(false);
@@ -662,15 +670,64 @@ useEffect(() => {
   }
 }, [activeSection, activeProductsTab, productsSearchTerm]);
 
-  const handleAddFinanceRecord = (e) => {
-    e.preventDefault();
-    showAlert('Finance record would be saved to database in backend implementation', 'success');
+  const handleAddFinanceRecord = async (e) => {
+  e.preventDefault();
+  try {
+    setLoading(true);
+    
+    // Validate required fields
+    if (!newFinanceRecord.Date || !newFinanceRecord.Total_Revenue || !newFinanceRecord.Total_Expense) {
+      throw new Error('Please fill all required fields');
+    }
+
+    // Validate numbers
+    if (isNaN(newFinanceRecord.Total_Revenue) || isNaN(newFinanceRecord.Total_Expense)) {
+      throw new Error('Revenue and expense must be numbers');
+    }
+
+    const token = localStorage.getItem('employeeToken');
+    if (!token) {
+      throw new Error('Authentication token missing');
+    }
+
+    const response = await axios.post('/api/finance', {
+      date: newFinanceRecord.Date,
+      totalRevenue: newFinanceRecord.Total_Revenue,
+      totalExpense: newFinanceRecord.Total_Expense
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.status !== 201) {
+      throw new Error('Failed to add finance record');
+    }
+
+    // Reset form and show success
     setNewFinanceRecord({
       Date: '',
       Total_Revenue: '',
       Total_Expense: ''
     });
-  };
+    
+    showAlert('Finance record added successfully!', 'success');
+  } catch (err) {
+    let errorMessage = 'Failed to add finance record';
+    if (err.response) {
+      errorMessage = err.response.data?.message || 
+                    err.response.data?.error || 
+                    err.response.statusText;
+    } else if (err.message) {
+      errorMessage = err.message;
+    }
+    
+    showAlert(errorMessage, 'danger');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Render sections
   const renderMilkProduction = () => (
@@ -1514,60 +1571,70 @@ const renderProducts = () => (
   </Card>
 );
 
-  const renderFarmFinance = () => (
-    <Card className="p-4 mb-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Farm Finance</h2>
-        <div>
-          <Button 
-            variant="primary"
-            onClick={() => {}} // Single button mode as requested
-          >
-            Add Finance
-          </Button>
-        </div>
+const renderFarmFinance = () => (
+  <Card className="p-4 mb-4">
+    <div className="d-flex justify-content-between align-items-center mb-4">
+      <h2>Farm Finance</h2>
+      <div>
+        <Button 
+          variant="primary"
+          onClick={() => {}} // Single button mode as requested
+        >
+          Add Finance
+        </Button>
       </div>
+    </div>
 
-      <Form onSubmit={handleAddFinanceRecord}>
-        <Form.Group className="mb-3">
-          <Form.Label>Date</Form.Label>
+    <Form onSubmit={handleAddFinanceRecord}>
+      <Form.Group className="mb-3">
+        <Form.Label>Date</Form.Label>
+        <Form.Control 
+          type="date" 
+          required
+          max={new Date().toISOString().split('T')[0]}
+          value={newFinanceRecord.Date}
+          onChange={(e) => setNewFinanceRecord({...newFinanceRecord, Date: e.target.value})}
+        />
+      </Form.Group>
+
+      <div className="row mb-3">
+        <Form.Group className="col-md-6">
+          <Form.Label>Total Revenue (Rs)</Form.Label>
           <Form.Control 
-            type="date" 
+            type="number" 
             required
-            value={newFinanceRecord.Date}
-            onChange={(e) => setNewFinanceRecord({...newFinanceRecord, Date: e.target.value})}
+            min="0"
+            step="0.01"
+            value={newFinanceRecord.Total_Revenue}
+            onChange={(e) => setNewFinanceRecord({...newFinanceRecord, Total_Revenue: e.target.value})}
           />
         </Form.Group>
+        <Form.Group className="col-md-6">
+          <Form.Label>Total Expense (Rs)</Form.Label>
+          <Form.Control 
+            type="number" 
+            required
+            min="0"
+            step="0.01"
+            value={newFinanceRecord.Total_Expense}
+            onChange={(e) => setNewFinanceRecord({...newFinanceRecord, Total_Expense: e.target.value})}
+          />
+        </Form.Group>
+      </div>
 
-        <div className="row mb-3">
-          <Form.Group className="col-md-6">
-            <Form.Label>Total Revenue (Rs)</Form.Label>
-            <Form.Control 
-              type="number" 
-              required
-              value={newFinanceRecord.Total_Revenue}
-              onChange={(e) => setNewFinanceRecord({...newFinanceRecord, Total_Revenue: e.target.value})}
-            />
-          </Form.Group>
-          <Form.Group className="col-md-6">
-            <Form.Label>Total Expense (Rs)</Form.Label>
-            <Form.Control 
-              type="number" 
-              required
-              value={newFinanceRecord.Total_Expense}
-              onChange={(e) => setNewFinanceRecord({...newFinanceRecord, Total_Expense: e.target.value})}
-            />
-          </Form.Group>
-        </div>
-
-        <div className="d-flex justify-content-end">
-          <Button variant="primary" type="submit">
-            Add Record
-          </Button>
-        </div>
-      </Form>
-    </Card>
-  );
+      <div className="d-flex justify-content-end">
+        <Button variant="primary" type="submit" disabled={loading}>
+          {loading ? (
+            <>
+              <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+              <span className="ms-2">Adding...</span>
+            </>
+          ) : 'Add Record'}
+        </Button>
+      </div>
+    </Form>
+  </Card>
+);
 
   const renderActiveSection = () => {
     switch(activeSection) {
